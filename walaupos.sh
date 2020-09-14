@@ -11,7 +11,7 @@
 #########################################################################################################
 
 # Get the distribution name
-DISTR=$(( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1 | awk '{print $1}')
+DISTR=$(cat /etc/*release | grep -i pretty | awk -F"\"" '{print $2}' | awk '{print $1}')
 
 ###########################
 ###	FUNCTIONS	###
