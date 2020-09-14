@@ -149,7 +149,8 @@ case $DISTR in
  [Ss][Uu][Ss][Ee]|SLES|sles)
 	echo "SLES"
 	agentname="waagent"
-	zypper install curl wget unzip -y
+	# -n = non-interactive (https://unix.stackexchange.com/questions/82016/how-to-use-zypper-in-bash-scripts-for-someone-coming-from-apt-get)
+	zypper -n install curl wget unzip
 	;;
  *)
 	echo "Unknown distribution. Aborting"
@@ -235,7 +236,7 @@ pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
 		 [Ss][Uu][Ss][Ee]|SLES|sles)
 			echo "SLES"
 			# Install prerequisites
-			zypper install python-pip wget unzip -y
+			zypper -n install python-pip
 			pip install --upgrade pip setuptools wheel
 			installwalinux="1"		  
 			;; 
