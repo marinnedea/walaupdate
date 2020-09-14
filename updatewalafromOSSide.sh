@@ -7,7 +7,7 @@
 # Requires:	AzCli 2.0 installed on the machine you're running this script on			#
 # 		https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest	#
 # 		If enabled, you can run it through the bash Cloud Shell in your Azure Portal page.	#
-# WARNING:	Tested only with CentOS/RHEL 7+, SLES 12+, Oracle 7+, Debian 9+, Ubuntu 16.04 +.	#
+# WARNING:	Tested only with CentOS/RHEL 7.2+, SLES 12.SP5+, Oracle 7+, Debian 10+, Ubuntu 16.04+	#
 #########################################################################################################
 
 # Log execution
