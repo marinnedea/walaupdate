@@ -196,7 +196,7 @@ pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
 		pipinst="0"
 	fi
 
-	[[ $pipinst == "1" ]] ; then
+	if [[ $pipinst == "1" ]] ; then
 		case $DISTR in
 		 [Uu]buntu|[Dd]ebian)
 			echo "Ubuntu/Debian"			  
