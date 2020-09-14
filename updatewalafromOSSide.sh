@@ -1,13 +1,13 @@
 #!/bin/bash 
 #########################################################################################################
 # Description:  Update walinuxagent from repository or, if latest version not available, from github  	#
-# Author: 		Marin Nedea																				#
-# Created: 		Sep 14th, 2020									       									#
-# Usage:  		Just run the script with sh (e.g. sh script.sh)           								#
-# Requires:		AzCli 2.0 installed on the machine you're running this script on						#
-# 				https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest		#
-# 				If enabled, you can run it through the bash Cloud Shell in your Azure Portal page.		#
-# WARNING:		Tested only with CentOS/RHEL 7+, SLES 12+, Oracle 7+, Debian 9+, Ubuntu 16.04 +.		#
+# Author: 	Marin Nedea										#
+# Created: 	Sep 14th, 2020									   	#
+# Usage:  	Just run the script with sh (e.g. sh script.sh)           				#
+# Requires:	AzCli 2.0 installed on the machine you're running this script on			#
+# 		https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest	#
+# 		If enabled, you can run it through the bash Cloud Shell in your Azure Portal page.	#
+# WARNING:	Tested only with CentOS/RHEL 7+, SLES 12+, Oracle 7+, Debian 9+, Ubuntu 16.04 +.	#
 #########################################################################################################
 
 # Log execution
