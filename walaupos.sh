@@ -14,7 +14,7 @@
 exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>/var/log/wala_update.log 2>&1
-set -x
+#set -x
 
 # Get the distribution name
 DISTR=$(cat /etc/*release | grep -i pretty | awk -F"\"" '{print $2}' | awk '{print $1}')
@@ -71,6 +71,37 @@ do_vercomp () {
     fi
 }
 
+rhel_repo_cert () {
+	yum update -y --disablerepo='*' --enablerepo='*microsoft*'
+	yum clean all
+	yum makecache
+}
+
+rhel_non_eus () {
+	FILE="/etc/yum/vars/releasever"
+	[ -f "$FILE" ] && vlock="1" || vlock="0"
+
+	if [[ "$vlock" == "1" ]]; then	
+		mv /etc/yum/vars/releasever /tmp/releasever
+		yum --disablerepo='*' remove 'rhui-azure-rhel7-eus' -y
+		yum --config='https://rhelimage.blob.core.windows.net/repositories/rhui-microsoft-azure-rhel7.config' install 'rhui-azure-rhel7' -y
+	elif [[  "$vlock" == "0"  ]] ; then
+		rhel_repo_cert
+	fi
+} 
+
+rhel_eus () {
+	FILE="/tmp/releasever"
+	[ -f "$FILE" ] && eus="1"
+	if [[ "$eus" == "1" ]] ; then
+	yum --disablerepo='*' remove 'rhui-azure-rhel7' -y 
+	yum --config='https://rhelimage.blob.core.windows.net/repositories/rhui-microsoft-azure-rhel7-eus.config' install 'rhui-azure-rhel7-eus' -y
+	cp $FILE > /etc/yum/vars/releasever
+	yum clean all
+	yum makecache
+	fi
+}
+
 # Install waagent from github function
 walainstall () {
 	systemctl stop $agentname 					  
@@ -103,12 +134,19 @@ case $DISTR in
 	agentname="walinuxagent"
 	apt-get install curl wget unzip -y
 	;;
- [Cc]ent[Oo][Ss]|rhel|red|Red|[Rr]ed[Hh]at|[Oo]racle)
+ [Cc]ent[Oo][Ss]|[Oo]racle)
  	echo "RedHat/CentOS/Oracle"
 	agentname="waagent"
 	yum install curl wget unzip -y
 	;;
- [Ss]use|SLES|sles)
+ rhel|red|Red|[Rr]ed[Hh]at)
+ 	echo "RedHat"
+	agentname="waagent"
+	rhel_non_eus
+	yum install curl wget unzip -y
+	rhel_eus
+	;;
+ [Ss][Uu][Ss][Ee]|SLES|sles)
 	echo "SLES"
 	agentname="waagent"
 	zypper install curl wget unzip -y
@@ -167,7 +205,7 @@ pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
 			pip install --upgrade pip setuptools wheel
 			installwalinux="1"			  
 			;;
-		 [Cc]ent[Oo][Ss]|rhel|red|Red|[Rr]ed[Hh]at|[Oo]racle)
+		 [Cc]ent[Oo][Ss]|[Oo]racle)
 			echo "RedHat/CentOS/Oracle"
 			# Install prerequisites			  
 			cd /tmp
@@ -177,7 +215,19 @@ pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
 			yum install python-pip python-wheel python-setuptools -y 				  
 			installwalinux="1"
 			;;
-		 [Ss]use|SLES|sles)
+		 rhel|red|Red|[Rr]ed[Hh]at)
+			echo "RedHat"
+			agentname="waagent"
+			rhel_non_eus
+		 	cd /tmp
+			yum install wget unzip -y
+			wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+			yum install epel-release-latest-7.noarch.rpm -y
+			yum install python-pip python-wheel python-setuptools -y 	
+			rhel_eus
+			installwalinux="1"
+			;;
+		 [Ss][Uu][Ss][Ee]|SLES|sles)
 			echo "SLES"
 			# Install prerequisites
 			zypper install python-pip wget unzip -y
