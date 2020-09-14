@@ -96,7 +96,7 @@ walainstall () {
 	# Backup existing WALinuxAgent files
 	mv /var/lib/waagent  /var/lib/waagentBACKUP
 	# Install WALinuxAgent 			
-	wget https://github.com/Azure/WALinuxAgent/archive/v$lastwala.zip
+	curl -O https://github.com/Azure/WALinuxAgent/archive/v$lastwala.zip
 	unzip v$lastwala.zip
 	cd WALinuxAgent-$lastwala
 	[[ $pvers == "2" ]] && 	python setup.py install || python3 setup.py install
@@ -141,7 +141,7 @@ pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
 		 [Uu]buntu|[Dd]ebian)
 			echo "Ubuntu/Debian"			  
 			# Install prerequisites
-			apt-get install python-pip wget unzip -y
+			apt-get install python-pip unzip -y
 			pip install --upgrade pip setuptools wheel
 			installwalinux="1"			  
 			;;
@@ -149,15 +149,15 @@ pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
 			echo "RedHat/CentOS/Oracle"
 			# Install prerequisites			  
 			cd /tmp
-			wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+			curl -O https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 			yum install epel-release-latest-7.noarch.rpm -y
-			yum install python-pip python-wheel python-setuptools wget unzip -y 				  
+			yum install python-pip python-wheel python-setuptools unzip -y 				  
 			installwalinux="1"
 			;;
 		 [Ss]use|SLES|sles)
 			echo "SLES"
 			# Install prerequisites
-			zypper install python-pip wget unzip -y
+			zypper install python-pip unzip -y
 			pip install --upgrade pip setuptools wheel
 			installwalinux="1"		  
 			;; 
@@ -167,7 +167,33 @@ pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
 			exit 0
 			;;
 		esac
-	fi	
+	elif [[ $pipinst == "0" ]] ; then
+		case $DISTR in
+		 [Uu]buntu|[Dd]ebian)
+			echo "Ubuntu/Debian"			  
+			# Install prerequisites
+			apt-get install unzip -y
+			installwalinux="1"			  
+			;;
+		 [Cc]ent[Oo][Ss]|rhel|[Rr]ed[Hh]at|[Oo]racle)
+			echo "RedHat/CentOS/Oracle"
+			# Install prerequisites				
+			yum install unzip -y 				  
+			installwalinux="1"
+			;;
+		 [Ss]use|SLES|sles)
+			echo "SLES"
+			# Install prerequisites
+			zypper install unzip -y			
+			installwalinux="1"		  
+			;; 
+		 *)
+			echo "Unknown distribution. Aborting"
+			installwalinux="0"
+			exit 0
+			;;
+		esac
+	fi
 fi
 
 # If all checks-up, install the agent
