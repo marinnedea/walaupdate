@@ -16,7 +16,7 @@ trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>/var/log/wala_update.log 2>&1
 
 # Get latest walinuxagent version from github (see https://github.com/Azure/WALinuxAgent/releases/latest )
-lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep -o -P '(?<=v).*(?=\")')
+[ ! -x /usr/bin/curl ] && lastwala=$(wget https://github.com/Azure/WALinuxAgent/releases/latest -q | grep "<title>"  latest | awk '{print $2}') ||  lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep -o -P '(?<=v).*(?=\")')
 
 # Check running waaagent version
 waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
