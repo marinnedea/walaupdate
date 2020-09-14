@@ -11,10 +11,10 @@
 #########################################################################################################
 
 # Log execution
-exec 3>&1 4>&2
-trap 'exec 2>&4 1>&3' 0 1 2 3
-exec 1>/var/log/wala_update.log 2>&1
-set -x
+#exec 3>&1 4>&2
+#trap 'exec 2>&4 1>&3' 0 1 2 3
+#exec 1>/var/log/wala_update.log 2>&1
+#set -x
 
 # Get the distribution name
 DISTR=$(( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1 | awk '{print $1}')
