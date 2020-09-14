@@ -104,8 +104,7 @@ rhel_eus () {
 }
 
 # Install waagent from github function
-walainstall () {
-				  
+walainstall () {				  
 	# Backup existing WALinuxAgent files
 	systemctl stop $agentname 	
 	mv /var/lib/waagent  /var/lib/waagentBACKUP
@@ -121,7 +120,7 @@ walainstall () {
 	systemctl restart $agentname
 
 	# Restore ovf-env.xml from backup
-	sleep 10
+	sleep 1
 	cp /var/lib/waagentBACKUP/ovf-env.xml /var/lib/waagent/ovf-env.xml
 	
 	# Restart WALinuxAgent
