@@ -91,8 +91,14 @@ walainstall () {
 	# Restore ovf-env.xml from backup
 	sleep 10
 	cp /var/lib/waagentBACKUP/ovf-env.xml /var/lib/waagent/ovf-env.xml
+	
+	#Make sure autoupdate is enabled
+	oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
+	sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
+	
 	# Restart WALinuxAgent
 	systemctl restart $agentname 
+	
 	# Get the running agent version after update
 	waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
 	
