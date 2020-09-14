@@ -102,63 +102,63 @@ walainstall () {
 	exit 0
 }
 
-# Try to update the walinuxagent using the repository versions.
-case $DISTR in
-	[Uu]buntu)
-		echo "Ubuntu"
-		apt-get -qq update
-		apt-get install -y walinuxagent		  
-		#Make sure autoupdate is enabled
-		oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
-		sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
-		#Restart the walinuxagent service
-		systemctl restart walinuxagent
-		do_vercomp $waagentrunning $lastwala "<"
-		[[ $upagent == "0" ]] && echo "WALinuxAgent is now up-to-date" || echo "WALinuxAgent update failed"
-		exit 0		  
-		;;
-	[Dd]ebian)
-		echo "Debian"
-		apt-get -qq update
-		apt-get install -y waagent		  
-		#Make sure autoupdate is enabled
-		oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
-		sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
-		#Restart the walinuxagent service
-		systemctl restart walinuxagent
-		do_vercomp $waagentrunning $lastwala "<"
-		[[ $upagent == "0" ]] && echo "WALinuxAgent is now up-to-date" || echo "WALinuxAgent update failed"
-		exit 0
-		;;
-	[Cc]ent[Oo][Ss]|rhel|[Rr]ed[Hh]at|[Oo]racle)
-		echo "RedHat/CentOS/Oracle"
-		yum install -y WALinuxAgent		  
-		#Make sure autoupdate is enabled
-		oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
-		sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
-		#Restart the waagent service
-		systemctl restart waagent
-		do_vercomp $waagentrunning $lastwala "<"
-		[[ $upagent == "0" ]] && echo "WALinuxAgent is now up-to-date" || echo "WALinuxAgent update failed"
-		exit 0
-		;;
-	[Ss]use|SLES|sles)
-		echo "SLES"
-		zypper install python-azure-agent -y
-		#Make sure autoupdate is enabled
-		oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
-		sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
-		#Restart the waagent service
-		systemctl restart waagent
-		do_vercomp $waagentrunning $lastwala "<"
-		[[ $upagent == "0" ]] && echo "WALinuxAgent is now up-to-date" || echo "WALinuxAgent update failed"
-		exit 0
-		;; 
-	*)
-		echo "Unknown distribution. Aborting"
-		exit 0
-		;;
-esac
+# # Try to update the walinuxagent using the repository versions.
+# case $DISTR in
+# 	[Uu]buntu)
+# 		echo "Ubuntu"
+# 		apt-get -qq update
+# 		apt-get install -y walinuxagent		  
+# 		#Make sure autoupdate is enabled
+# 		oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
+# 		sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
+# 		#Restart the walinuxagent service
+# 		systemctl restart walinuxagent
+# 		do_vercomp $waagentrunning $lastwala "<"
+# 		[[ $upagent == "0" ]] && echo "WALinuxAgent is now up-to-date" || echo "WALinuxAgent update failed"
+# 		exit 0		  
+# 		;;
+# 	[Dd]ebian)
+# 		echo "Debian"
+# 		apt-get -qq update
+# 		apt-get install -y waagent		  
+# 		#Make sure autoupdate is enabled
+# 		oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
+# 		sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
+# 		#Restart the walinuxagent service
+# 		systemctl restart walinuxagent
+# 		do_vercomp $waagentrunning $lastwala "<"
+# 		[[ $upagent == "0" ]] && echo "WALinuxAgent is now up-to-date" || echo "WALinuxAgent update failed"
+# 		exit 0
+# 		;;
+# 	[Cc]ent[Oo][Ss]|rhel|[Rr]ed[Hh]at|[Oo]racle)
+# 		echo "RedHat/CentOS/Oracle"
+# 		yum install -y WALinuxAgent		  
+# 		#Make sure autoupdate is enabled
+# 		oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
+# 		sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
+# 		#Restart the waagent service
+# 		systemctl restart waagent
+# 		do_vercomp $waagentrunning $lastwala "<"
+# 		[[ $upagent == "0" ]] && echo "WALinuxAgent is now up-to-date" || echo "WALinuxAgent update failed"
+# 		exit 0
+# 		;;
+# 	[Ss]use|SLES|sles)
+# 		echo "SLES"
+# 		zypper install python-azure-agent -y
+# 		#Make sure autoupdate is enabled
+# 		oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
+# 		sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
+# 		#Restart the waagent service
+# 		systemctl restart waagent
+# 		do_vercomp $waagentrunning $lastwala "<"
+# 		[[ $upagent == "0" ]] && echo "WALinuxAgent is now up-to-date" || echo "WALinuxAgent update failed"
+# 		exit 0
+# 		;; 
+# 	*)
+# 		echo "Unknown distribution. Aborting"
+# 		exit 0
+# 		;;
+# esac
 
 # Compare versions
 do_vercomp $waagentrunning $lastwala "<"
