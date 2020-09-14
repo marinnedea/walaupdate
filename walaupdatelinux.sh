@@ -1,12 +1,12 @@
 #!/bin/bash
 #########################################################################################################
-# Description:  Find Windows Azure Agent version on all VMs in all subscriptions 	           			#
-# Author: 		Marin Nedea																				#
-# Created: 		June 24th, 2020									       									#
-# Usage:  		Just run the script with sh (e.g. sh script.sh)           								#
-# Requires:		AzCli 2.0 installed on the machine you're running this script on						#
-# 				https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest		#
-# 				If enabled, you can run it through the bash Cloud Shell in your Azure Portal page.		#
+# Description:  Find Windows Azure Agent version on all VMs in all subscriptions 	       		#
+# Author: 	Marin Nedea										#
+# Created: 	June 24th, 2020										#
+# Usage:  	Just run the script with sh (e.g. sh script.sh)           				#
+# Requires:	AzCli 2.0 installed on the machine you're running this script on			#
+# 		https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest	#
+# 		If enabled, you can run it through the bash Cloud Shell in your Azure Portal page.	#
 #########################################################################################################
 
 echo "DISCLAIMER: 
@@ -111,8 +111,7 @@ do_vercomp () {
 }
 
 # Find all subscriptions:
-#for subs in $(az account list -o tsv | awk '{print $3}'); do
-for subs in 3a1d20d8-e64c-4464-a798-b81f32d41b4a; do
+for subs in $(az account list -o tsv | awk '{print $3}'); do
 	# Find current logged in username 
 	username=$(az account show --query user.name --output tsv)
 	
@@ -157,14 +156,11 @@ for subs in 3a1d20d8-e64c-4464-a798-b81f32d41b4a; do
 					if [[ $upagent == "1" ]]; then
 						echo "Agent version $agentversion lower than $lastwala."
 						echo "Updating the WaLinuxAgent on Linux VM $vmName, to version $lastwala."
-						
 						az vm run-command invoke --verbose -g $rgName -n $vmName --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupOS.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && chmod +x walaupOS.sh && sh -x walaupOS.sh'
-						
-						#az vm extension set -g $rgName --vm-name $vmName --name customScript --publisher Microsoft.Azure.Extensions --verbose --protected-settings '{"fileUris": ["https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh"],"commandToExecute": "chmod +x walaupos.sh && ./walaupos.sh"}'
-						
 						
 						# Give 60s time to Azure Portal to update agent status
 						sleep 60
+						
 						# Check new agent version
 						newagentversion=$(az vm get-instance-view --resource-group $rgName --name $vmName | grep -i vmagentversion | awk -F"\"" '{print $4}')
 						if [[ "$newagentversion" == "$lastwala" ]]; then
