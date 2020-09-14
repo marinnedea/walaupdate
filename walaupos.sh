@@ -164,9 +164,14 @@ esac
 # Get latest walinuxagent version from github (see https://github.com/Azure/WALinuxAgent/releases/latest )
 lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep -o -P '(?<=v).*(?=\")')
 
+#Make sure autoupdate is enabled
+oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
+sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
+systemctl daemon-reload
+systemctl restart $agentname
+
 # Check running waaagent version
 waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
-
 
 # Compare versions
 do_vercomp $waagentrunning $lastwala "<"
@@ -249,10 +254,4 @@ fi
 
 # If all checks-up, install the agent
 [[ $installwalinux == "1" ]] && walainstall 
-
-#Make sure autoupdate is enabled
-oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
-sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
-systemctl daemon-reload
-systemctl restart $agentname
 exit 0
