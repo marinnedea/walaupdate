@@ -75,7 +75,7 @@ do_vercomp () {
 }
 
 case $DISTR in
- [Uu]buntu|[Dd]ebian))
+ [Uu]buntu|[Dd]ebian)
 	echo "Ubuntu/Debian"
 	agentname="walinuxagent"		   		  
 	;;
@@ -149,9 +149,10 @@ pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
 			echo "RedHat/CentOS/Oracle"
 			# Install prerequisites			  
 			cd /tmp
+			yum install wget unzip -y
 			wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 			yum install epel-release-latest-7.noarch.rpm -y
-			yum install python-pip python-wheel python-setuptools wget unzip -y 				  
+			yum install python-pip python-wheel python-setuptools -y 				  
 			installwalinux="1"
 			;;
 		 [Ss]use|SLES|sles)
