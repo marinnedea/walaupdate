@@ -97,7 +97,7 @@ case $DISTR in
 	agentname="walinuxagent"
 	apt-get install curl wget unzip -y
 	;;
- [Cc]ent[Oo][Ss]|rhel|[Rr]ed[Hh]at|[Oo]racle)
+ [Cc]ent[Oo][Ss]|rhel|[Rr]ed|[Oo]racle)
  	echo "RedHat/CentOS/Oracle"
 	agentname="waagent"
 	yum install curl wget unzip -y
@@ -161,7 +161,7 @@ pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
 			pip install --upgrade pip setuptools wheel
 			installwalinux="1"			  
 			;;
-		 [Cc]ent[Oo][Ss]|rhel|[Rr]ed[Hh]at|[Oo]racle)
+		 [Cc]ent[Oo][Ss]|rhel|[Rr]ed|[Oo]racle)
 			echo "RedHat/CentOS/Oracle"
 			# Install prerequisites			  
 			cd /tmp
