@@ -75,7 +75,7 @@ do_vercomp () {
 }
 
 case $DISTR in
- [Uu]buntu|[Dd]ebian))
+ [Uu]buntu|[Dd]ebian)
 	echo "Ubuntu/Debian"
 	agentname="walinuxagent"		   		  
 	;;
