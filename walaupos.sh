@@ -16,21 +16,12 @@ trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>/var/log/wala_update.log 2>&1
 set -x
 
-# Get latest walinuxagent version from github (see https://github.com/Azure/WALinuxAgent/releases/latest )
-if [ ! -x /usr/bin/curl ] ; then
-	wget https://github.com/Azure/WALinuxAgent/releases/latest -q 
-	lastwala=$(grep "<title>"  latest | awk '{print $2}') 
-else
-  lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep -o -P '(?<=v).*(?=\")')
-fi
-
-# Check running waaagent version
-waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
-
 # Get the distribution name
 DISTR=$(( lsb_release -ds || cat /etc/*release || uname -om ) 2>/dev/null | head -n1 | awk '{print $1}')
 
-# Pure bash functions to compare versions
+###########################
+###	FUNCTIONS	###
+###########################
 vercomp () {
     if [[ $1 == $2 ]]
     then
@@ -80,22 +71,6 @@ do_vercomp () {
     fi
 }
 
-case $DISTR in
- [Uu]buntu|[Dd]ebian)
-	echo "Ubuntu/Debian"
-	agentname="walinuxagent"		   		  
-	;;
- [Cc]ent[Oo][Ss]|rhel|[Rr]ed[Hh]at|[Oo]racle|[Ss]use|SLES|sles)
-	echo "RedHat/CentOS/Oracle/SLES"
-	agentname="waagent"
-	;;
- *)
-	echo "Unknown distribution. Aborting"
-	exit 0
-	;;
-esac
-
-
 # Install waagent from github function
 walainstall () {
 	systemctl stop $agentname 					  
@@ -118,8 +93,49 @@ walainstall () {
 	systemctl restart $agentname 
 }
 
+###########################
+###	DISTRO CHECK	###
+###########################
+
+case $DISTR in
+ [Uu]buntu|[Dd]ebian)
+	echo "Ubuntu/Debian"
+	agentname="walinuxagent"
+	apt-get install curl wget unzip -y
+	;;
+ [Cc]ent[Oo][Ss]|rhel|[Rr]ed[Hh]at|[Oo]racle)
+ 	echo "RedHat/CentOS/Oracle"
+	agentname="waagent"
+	yum install curl wget unzip -y
+	;;
+ [Ss]use|SLES|sles)
+	echo "SLES"
+	agentname="waagent"
+	zypper install curl wget unzip -y
+	;;
+ *)
+	echo "Unknown distribution. Aborting"
+	exit 0
+	;;
+esac
+
+###########################
+###	AGENT CHECK	###
+###########################
+
+# Get latest walinuxagent version from github (see https://github.com/Azure/WALinuxAgent/releases/latest )
+lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep -o -P '(?<=v).*(?=\")')
+
+# Check running waaagent version
+waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
+
+
 # Compare versions
 do_vercomp $waagentrunning $lastwala "<"
+
+###########################
+###	PREREQUISITES	###
+###########################
 
 if [[ $upagent == "1" ]]; then
 # Check prerequisites:
@@ -176,6 +192,10 @@ pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
 		esac
 	fi	
 fi
+
+###########################
+###	INSTALL AGENT	###
+###########################
 
 # If all checks-up, install the agent
 [[ $installwalinux == "1" ]] && walainstall 
