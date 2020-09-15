@@ -21,55 +21,60 @@ set -x
 ###########################
 
 # Compare version function 1
-vercomp () {
-    if [[ $1 == $2 ]]
-    then
-        return 0
-    fi
-    local IFS=.
-    local i ver1=($1) ver2=($2)
-    # fill empty fields in ver1 with zeros
-    for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
-    do
-        ver1[i]=0
-    done
-    for ((i=0; i<${#ver1[@]}; i++))
-    do
-        if [[ -z ${ver2[i]} ]]
-        then
-            # fill empty fields in ver2 with zeros
-            ver2[i]=0
-        fi
-        if ((10#${ver1[i]} > 10#${ver2[i]}))
-        then
-            return 1
-        fi
-        if ((10#${ver1[i]} < 10#${ver2[i]}))
-        then
-            return 2
-        fi
-    done
-    return 0
+
+ver () { 
+	printf "%03d%03d%03d%03d" $(echo "$1" | tr '.' ' ')
 }
-# Compare version function 2
-do_vercomp () {
-  vercomp $1 $2
-    case $? in
-        0) op='=';;
-        1) op='>';;
-        2) op='<';;
-    esac
-    if [[ $op == $3 ]] 
-    then		
-		echo "FAIL: '$1 $op $2'"
-		echo "Agent needs updated"
-		upagent="1"        
-    else
-        echo "Pass: '$1 $op $2'"
-		echo "Agent already up-to-date"
-		exit 0
-    fi
-}
+
+# vercomp () {
+#     if [[ $1 == $2 ]]
+#     then
+#         return 0
+#     fi
+#     local IFS=.
+#     local i ver1=($1) ver2=($2)
+#     # fill empty fields in ver1 with zeros
+#     for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
+#     do
+#         ver1[i]=0
+#     done
+#     for ((i=0; i<${#ver1[@]}; i++))
+#     do
+#         if [[ -z ${ver2[i]} ]]
+#         then
+#             # fill empty fields in ver2 with zeros
+#             ver2[i]=0
+#         fi
+#         if ((10#${ver1[i]} > 10#${ver2[i]}))
+#         then
+#             return 1
+#         fi
+#         if ((10#${ver1[i]} < 10#${ver2[i]}))
+#         then
+#             return 2
+#         fi
+#     done
+#     return 0
+# }
+# # Compare version function 2
+# do_vercomp () {
+#   vercomp $1 $2
+#     case $? in
+#         0) op='=';;
+#         1) op='>';;
+#         2) op='<';;
+#     esac
+#     if [[ $op == $3 ]] 
+#     then		
+# 		echo "FAIL: '$1 $op $2'"
+# 		echo "Agent needs updated"
+# 		upagent="1"        
+#     else
+#         echo "Pass: '$1 $op $2'"
+# 		echo "Agent already up-to-date"
+# 		exit 0
+#     fi
+# }
 
 # Install waagent from github function
 walainstall () {	
@@ -94,27 +99,25 @@ walainstall () {
 	
 	# Restart WALinuxAgent
 	systemctl daemon-reload
-	systemctl restart $agentname 
-	exit 0
 }
 
 # Install pip, setuptools and wheel
 pipinstall () {
 	case $DISTR in
 	[Uu]buntu|[Dd]ebian)
-		which python3 > /dev/null 2>&1 && i="3"
+		which python3  && i="3"
 		apt-get install python$i-pip -y
 		pip$i install --upgrade pip setuptools wheel  
 		;;
 	[Cc]ent[Oo][Ss]|[Oo]racle|rhel|[Rr]ed|[Rr]ed[Hh]at)
 		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 		yum install epel-release-latest-7.noarch.rpm -y
-		which python3 > /dev/null 2>&1 && i="3"
+		which python3  && i="3"
 		yum install python$i-pip python$i-wheel python$i-setuptools -y 
 		pip$i install --upgrade pip setuptools wheel				  	
 		;;
 	[Ss][Uu][Ss][Ee]|SLES|sles)
-		which python3 > /dev/null 2>&1 && i="3"
+		which python3  && i="3"
 		zypper -n install python$i-pip 
 		pip$i install --upgrade pip setuptools wheel		  
 		;; 
@@ -131,32 +134,32 @@ distrocheck () {
 	[Uu]buntu|[Dd]ebian)
 		# echo "Ubuntu/Debian"
 		agentname="walinuxagent"	
-		! which curl  > /dev/null 2>&1 && apt-get install -y curl
-		! which wget  > /dev/null 2>&1 && apt-get install -y wget
-		! which unzip > /dev/null 2>&1 && apt-get install -y unzip
+		! which curl   && apt-get install -y curl
+		! which wget   && apt-get install -y wget
+		! which unzip  && apt-get install -y unzip
 		;;
 	[Cc]ent[Oo][Ss]|[Oo]racle)
 		# echo "RedHat/CentOS/Oracle"
 		agentname="waagent"
-		! which curl  > /dev/null 2>&1 && yum install -y curl
-		! which wget  > /dev/null 2>&1 && yum install -y wget
-		! which unzip > /dev/null 2>&1 && yum install -y unzip
+		! which curl   && yum install -y curl
+		! which wget   && yum install -y wget
+		! which unzip  && yum install -y unzip
 		;;
 	rhel|red|Red|[Rr]ed[Hh]at)
 		# echo "RedHat"
 		agentname="waagent"
 		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 		yum install epel-release-latest-7.noarch.rpm -y
-		! which curl  > /dev/null 2>&1 && yum install -y --enablerepo=epel curl
-		! which wget  > /dev/null 2>&1 && yum install -y --enablerepo=epel wget
-		! which unzip > /dev/null 2>&1 && yum install -y --enablerepo=epel unzip
+		! which curl   && yum install -y --enablerepo=epel curl
+		! which wget   && yum install -y --enablerepo=epel wget
+		! which unzip  && yum install -y --enablerepo=epel unzip
 		;;
 	[Ss][Uu][Ss][Ee]|SLES|sles)
 		# echo "SLES"
 		agentname="waagent"
-		! which curl  > /dev/null 2>&1 && zypper -n install curl
-		! which wget  > /dev/null 2>&1 && zypper -n install wget
-		! which unzip > /dev/null 2>&1 && zypper -n install unzip
+		! which curl   && zypper -n install curl
+		! which wget   && zypper -n install wget
+		! which unzip  && zypper -n install unzip
 		;;
 	*)
 		echo "Unknown distribution. Aborting"
@@ -164,6 +167,11 @@ distrocheck () {
 		;;
 	esac
 }
+
+# Make sure autoupdate is enabled, so even if this script fails further, the agent may try to update itself automatically. 
+oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
+sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
+
 ###########################
 ###	DISTRO CHECK	###
 ###########################
@@ -181,11 +189,9 @@ lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep 
 waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
 
 # Compare versions
-do_vercomp $waagentrunning $lastwala "<"
+# do_vercomp $waagentrunning $lastwala "<"
 
-#Make sure autoupdate is enabled
-oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
-sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
+[ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && echo "Agent needs updated" && upagent="1" || echo "Agent is updated.Aborting." && exit 0
 
 ##############################
 ###	PREREQUISITES CHECK    ###
@@ -198,7 +204,6 @@ pipcheck=$(python -m pip -V | grep -i "not installed")
 ############################
 [[ $upagent == "1" ]] && walainstall 
 
-systemctl daemon-reload
 systemctl restart $agentname
 
 exit 0
