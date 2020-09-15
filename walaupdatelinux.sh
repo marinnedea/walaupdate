@@ -62,52 +62,8 @@ echo ""
 echo ""
 
 # Pure bash functions to compare versions
-vercomp () {
-    if [[ $1 == $2 ]]
-    then
-        return 0
-    fi
-    local IFS=.
-    local i ver1=($1) ver2=($2)
-    # fill empty fields in ver1 with zeros
-    for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
-    do
-        ver1[i]=0
-    done
-    for ((i=0; i<${#ver1[@]}; i++))
-    do
-        if [[ -z ${ver2[i]} ]]
-        then
-            # fill empty fields in ver2 with zeros
-            ver2[i]=0
-        fi
-        if ((10#${ver1[i]} > 10#${ver2[i]}))
-        then
-            return 1
-        fi
-        if ((10#${ver1[i]} < 10#${ver2[i]}))
-        then
-            return 2
-        fi
-    done
-    return 0
-}
-
-do_vercomp () {
-    vercomp $1 $2
-    case $? in
-        0) op='=';;
-        1) op='>';;
-        2) op='<';;
-    esac
-    if [[ $op == $3 ]] 
-    then		
-		echo "FAIL: '$1 $op $2'"
-		upagent="1"        
-    else
-        echo "Pass: '$1 $op $2'"
-		upagent="0"
-    fi
+ver () { 
+	printf "%03d%03d%03d%03d" $(echo "$1" | tr '.' ' ')
 }
 
 # Find all subscriptions:
@@ -150,14 +106,17 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 						agentstate="Unknown"					
 					elif [[ $agentversion != "Unknown" ]] && [[ $osversion == "Linux" ]] && [[ $vmState == "VM running" ]]; then
 						echo "Comparing agent version:"						
-						do_vercomp  $agentversion $lastwala '<'												
+						[ $(ver ${agentversion}) -lt $(ver  ${lastwala}) ] && echo "Agent needs updated" && upagent="1" || echo "Agent is updated.Aborting." && upagent="0"					
 					fi
 					
 					if [[ $upagent == "1" ]]; then
 						echo "Agent version $agentversion lower than $lastwala."
 						echo "Updating the WaLinuxAgent on Linux VM $vmName, to version $lastwala."
+						
 						#az vm run-command invoke --verbose -g $rgName -n $vmName --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupos.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && chmod +x walaupos.sh && ./walaupos.sh'
+						
 						az vm extension set -g $rgName --vm-name $vmName --name customScript --publisher Microsoft.Azure.Extensions --verbose --protected-settings '{"fileUris": ["https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh"],"commandToExecute": "chmod +x walaupos.sh && ./walaupos.sh"}'
+
 						# Give 30s time to Azure Portal to update agent status
 						sleep 30
 						
