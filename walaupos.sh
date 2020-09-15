@@ -25,6 +25,11 @@ ver () {
 	printf "%03d%03d%03d%03d" $(echo "$1" | tr '.' ' ')
 }
 
+# remove existing walinuagent 
+walacleanup () {
+	( apt-get remove -y walinuxagent || yum remove -y WALinuxAgent  || zypper -n python-azure-agent )  2>/dev/null
+}
+
 # Install waagent from github function
 walainstall () {	
 	echo "Agent needs updated" 
@@ -52,7 +57,6 @@ walainstall () {
 	# Restart WALinuxAgent
 	echo "Reloading daemons"
 	systemctl daemon-reload
-
 }
 
 # Install pip, setuptools and wheel
@@ -152,7 +156,11 @@ pipcheck=$(python -m pip -V | grep -i "not installed")
 ############################
 ###		INSTALL AGENT    ###
 ############################
-[ "${upagent}" == "1" ] && walainstall || echo "Agent is updated already."
+if [ "${upagent}" == "1" ] ; 	then
+walacleanup && walainstall 
+else 
+	echo "Agent is updated already."
+fi
 
 echo "Restarting agent."
 systemctl restart ${agentname}
