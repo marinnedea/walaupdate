@@ -131,25 +131,25 @@ walainstall () {
 	systemctl restart $agentname 
 }
 
-
+# Install pip, setuptools and wheel
 pipinstall () {
 	case $DISTR in
 	[Uu]buntu|[Dd]ebian)
-		apt-get install python-pip -y
-		pip install --upgrade pip setuptools wheel  
+		which python3 > /dev/null 2>&1 && i="3"
+		apt-get install python$i-pip -y
+		pip$i install --upgrade pip setuptools wheel  
 		;;
-	[Cc]ent[Oo][Ss]|[Oo]racle)
+	[Cc]ent[Oo][Ss]|[Oo]racle|rhel|[Rr]ed|[Rr]ed[Hh]at)
 		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 		yum install epel-release-latest-7.noarch.rpm -y
-		yum install python-pip python-wheel python-setuptools -y 				  
-		;;
-	rhel|red|Red|[Rr]ed[Hh]at)
-		yum install epel-release-latest-7.noarch.rpm -y
-		yum install python-pip python-wheel python-setuptools -y 		
+		which python3 > /dev/null 2>&1 && i="3"
+		yum install python$i-pip python$i-wheel python$i-setuptools -y 
+		pip$i install --upgrade pip setuptools wheel				  	
 		;;
 	[Ss][Uu][Ss][Ee]|SLES|sles)
-		zypper -n install python-pip 
-		pip install --upgrade pip setuptools wheel		  
+		which python3 > /dev/null 2>&1 && i="3"
+		zypper -n install python$i-pip 
+		pip$i install --upgrade pip setuptools wheel		  
 		;; 
 		*)
 	echo "Unknown distribution. Aborting"
@@ -219,16 +219,13 @@ waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{p
 # Compare versions
 do_vercomp $waagentrunning $lastwala "<"
 
-
 #Make sure autoupdate is enabled
 oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
 sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
 
-
 ##############################
 ###	PREREQUISITES CHECK    ###
 ##############################
-
 pipcheck=$(python -m pip -V | grep -i "not installed")
 [[ -z "$pipcheck"  ]] && pipinstall
 
