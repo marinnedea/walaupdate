@@ -128,7 +128,7 @@ walainstall () {
 	exit 0
 }
 
-# Install pip, setuptools and wheel
+
 pipinstall () {
 	case $DISTR in
 	[Uu]buntu|[Dd]ebian)
@@ -223,22 +223,15 @@ waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{p
 do_vercomp $waagentrunning $lastwala "<"
 
 ##############################
-###  PREREQUISITES CHECK   ###
+###	PREREQUISITES CHECK    ###
 ##############################
 
-if [[ $upagent == "1" ]]; then
-	# Check prerequisites:
-	pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
-	[[ $pvers != "3" ]] && pipcheck=$(python -m pip -V | grep -i "not installed")
-	[[ -z "$pipcheck"  ]] && pipinstall
+pipcheck=$(python -m pip -V | grep -i "not installed")
+[[ -z "$pipcheck"  ]] && pipinstall
 
 ############################
-###	INSTALL AGENT    ###
+###		INSTALL AGENT    ###
 ############################
-
-	# Install walinuxagent
-	walainstall
-
-fi
+[[ $upagent == "1" ]] && walainstall 
 
 exit 0
