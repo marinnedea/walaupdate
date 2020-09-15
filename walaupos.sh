@@ -191,16 +191,16 @@ waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{p
 # Compare versions
 # do_vercomp $waagentrunning $lastwala "<"
 
-[ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && echo "Agent needs updated" && upagent="1" || echo "Agent is updated.Aborting." && exit 0
+[ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && echo "Agent needs updated" && upagent="1" || echo "Agent is updated.Aborting." && upagent="0"
 
 ##############################
-###	PREREQUISITES CHECK    ###
+### PREREQUISITES CHECK    ###
 ##############################
 pipcheck=$(python -m pip -V | grep -i "not installed")
 [[ -z "$pipcheck"  ]] && pipinstall
 
 ############################
-###		INSTALL AGENT    ###
+###	INSTALL AGENT    ###
 ############################
 [[ $upagent == "1" ]] && walainstall 
 
