@@ -27,14 +27,14 @@ ver () {
 
 # Install waagent from github function
 walainstall () {	
-	
+	echo "Agent needs updated" 
 	# Backup existing WALinuxAgent files
 	echo "Backin-up ovf-env.xml"
 	cp /var/lib/waagent/ovf-env.xml /tmp/ovf-env.xml
 
 	# Install WALinuxAgent 		
 	echo "Downloading latest waagent release"	
-	wget https://github.com/Azure/WALinuxAgent/archive/v$lastwala.zip
+	wget https://github.com/Azure/WALinuxAgent/archive/v${lastwala}.zip
 	echo "Extracting ${lastwala}.zip"
 	unzip v$lastwala.zip
 	echo "Starting installation"
@@ -53,13 +53,11 @@ walainstall () {
 	echo "Reloading daemons"
 	systemctl daemon-reload
 
-	echo "Restarting agent for the last time."
-	systemctl restart ${agentname}
 }
 
 # Install pip, setuptools and wheel
 pipinstall () {
-	case $DISTR in
+	case ${DISTR} in
 	[Uu]buntu|[Dd]ebian)
 		( apt-get install python3-pip -y || apt-get install python-pip -y ) 2>/dev/null 
 		;;
@@ -142,18 +140,21 @@ waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{p
 # Compare versions
 # do_vercomp $waagentrunning $lastwala "<"
 echo "Comparing agent running version with available one"
-[ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && echo "Agent needs updated" && upagent="1" || echo "Agent is updated.Aborting." && upagent="0"
+[ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && upagent="1" ||  upagent="0"
 
 ##############################
-###  PREREQUISITES CHECK   ###
+###	PREREQUISITES CHECK    ###
 ##############################
 echo "Checking pip"
 pipcheck=$(python -m pip -V | grep -i "not installed")
-[[ -z "$pipcheck"  ]] && pipinstall
+[[ -z "${pipcheck}"  ]] && pipinstall
 
 ############################
-###	INSTALL AGENT    ###
+###		INSTALL AGENT    ###
 ############################
-[[ $upagent == "1" ]] && walainstall
+[[ "${upagent}" == "1" ]] && walainstall || echo "Agent is updated already."
+
+echo "Restarting agent."
+systemctl restart ${agentname}
 
 echo "All done, exiting."
