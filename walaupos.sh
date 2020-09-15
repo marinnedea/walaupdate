@@ -128,7 +128,7 @@ walainstall () {
 	exit 0
 }
 
-
+# Install pip, setuptools and wheel
 pipinstall () {
 	case $DISTR in
 	[Uu]buntu|[Dd]ebian)
@@ -157,21 +157,20 @@ pipinstall () {
 
 # Check distribution and install curl, wget and unzip if needed
 distrocheck () {
-DISTR=$(cat /etc/*release | grep -i pretty | awk -F"\"" '{print $2}' | awk '{print $1}')
-case $DISTR in
+	case $DISTR in
 	[Uu]buntu|[Dd]ebian)
 		# echo "Ubuntu/Debian"
 		agentname="walinuxagent"
-		! which curl  >> /dev/null && apt-get install -y curl
-		! which wget  >> /dev/null && apt-get install -y wget
-		! which unzip >> /dev/null && apt-get install -y unzip
+		! which curl  > /dev/null 2>&1 && apt-get install -y curl
+		! which wget  > /dev/null 2>&1 && apt-get install -y wget
+		! which unzip > /dev/null 2>&1 && apt-get install -y unzip
 		;;
 	[Cc]ent[Oo][Ss]|[Oo]racle)
 		# echo "RedHat/CentOS/Oracle"
 		agentname="waagent"
-		! which curl  >> /dev/null && yum install -y curl
-		! which wget  >> /dev/null && yum install -y wget
-		! which unzip >> /dev/null && yum install -y unzip
+		! which curl  > /dev/null 2>&1 && yum install -y curl
+		! which wget  > /dev/null 2>&1 && yum install -y wget
+		! which unzip > /dev/null 2>&1 && yum install -y unzip
 		;;
 	rhel|red|Red|[Rr]ed[Hh]at)
 		# echo "RedHat"
@@ -180,28 +179,28 @@ case $DISTR in
 		check_wget=$(which wget)
 		check_unzip=$(which unzip)
 		[[ -z "$check_curl" || -z "$check_wget" || -z "$check_unzip" ]] && rhel_non_eus 
-		! which curl  >> /dev/null && yum install -y curl
-		! which wget  >> /dev/null && yum install -y wget
-		! which unzip >> /dev/null && yum install -y unzip
+		! which curl  > /dev/null 2>&1 && yum install -y curl
+		! which wget  > /dev/null 2>&1 && yum install -y wget
+		! which unzip > /dev/null 2>&1 && yum install -y unzip
 		rhel_eus
 		;;
 	[Ss][Uu][Ss][Ee]|SLES|sles)
 		# echo "SLES"
 		agentname="waagent"
-		! which curl  >> /dev/null && zypper -n install curl
-		! which wget  >> /dev/null && zypper -n install wget
-		! which unzip >> /dev/null && zypper -n install unzip
+		! which curl  > /dev/null 2>&1 && zypper -n install curl
+		! which wget  > /dev/null 2>&1 && zypper -n install wget
+		! which unzip > /dev/null 2>&1 && zypper -n install unzip
 		;;
 	*)
 		echo "Unknown distribution. Aborting"
 		exit 0
 		;;
-esac
+	esac
 }
 ###########################
 ###	DISTRO CHECK	###
 ###########################
-
+DISTR=$(cat /etc/*release | grep -i pretty | awk -F"\"" '{print $2}' | awk '{print $1}')
 distrocheck 
 
 ###########################
@@ -224,7 +223,7 @@ waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{p
 do_vercomp $waagentrunning $lastwala "<"
 
 ##############################
-###	PREREQUISITES CHECK    ###
+###  PREREQUISITES CHECK   ###
 ##############################
 
 if [[ $upagent == "1" ]]; then
