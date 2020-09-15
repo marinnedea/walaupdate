@@ -16,9 +16,6 @@ trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>/var/log/wala_update.log 2>&1
 set -x
 
-# Get the distribution name
-DISTR=$(cat /etc/*release | grep -i pretty | awk -F"\"" '{print $2}' | awk '{print $1}')
-
 ###########################
 ###	FUNCTIONS	###
 ###########################
@@ -83,7 +80,6 @@ rhel_repo_cert () {
 rhel_non_eus () {
 	FILE="/etc/yum/vars/releasever"
 	[ -f "$FILE" ] && vlock="1" || vlock="0"
-
 	if [[ "$vlock" == "1" ]]; then	
 		mv /etc/yum/vars/releasever /tmp/releasever
 		yum --disablerepo='*' remove 'rhui-azure-rhel7-eus' -y
@@ -104,23 +100,26 @@ rhel_eus () {
 }
 
 # Install waagent from github function
-walainstall () {				  
-	# Backup existing WALinuxAgent files
-	systemctl stop $agentname 	
-	mv /var/lib/waagent  /var/lib/waagentBACKUP
-
+walainstall () {	
+	
 	# Install WALinuxAgent 			
 	wget https://github.com/Azure/WALinuxAgent/archive/v$lastwala.zip
 	unzip v$lastwala.zip
 	cd WALinuxAgent-$lastwala
-	[[ $pvers == "2" ]] && 	python setup.py install || python3 setup.py install
+
+	# Backup existing WALinuxAgent files
+	systemctl stop $agentname 	
+	mv /var/lib/waagent  /var/lib/waagentBACKUP
+
+	# Run installer
+	python setup.py install
 
 	# Start it back
 	systemctl daemon-reload
 	systemctl restart $agentname
 
 	# Restore ovf-env.xml from backup
-	sleep 1
+	sleep 5
 	cp /var/lib/waagentBACKUP/ovf-env.xml /var/lib/waagent/ovf-env.xml
 	
 	# Restart WALinuxAgent
@@ -129,48 +128,85 @@ walainstall () {
 	exit 0
 }
 
-###########################
-###	DISTRO CHECK	###
-###########################
 
-case $DISTR in
+pipinstall () {
+	case $DISTR in
 	[Uu]buntu|[Dd]ebian)
-		echo "Ubuntu/Debian"
-		agentname="walinuxagent"
-		apt-get install curl wget unzip -y
+		apt-get install python-pip -y
+		pip install --upgrade pip setuptools wheel  
 		;;
 	[Cc]ent[Oo][Ss]|[Oo]racle)
-		echo "RedHat/CentOS/Oracle"
-		agentname="waagent"
-		yum install curl wget unzip -y
+		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+		yum install epel-release-latest-7.noarch.rpm -y
+		yum install python-pip python-wheel python-setuptools -y 				  
 		;;
 	rhel|red|Red|[Rr]ed[Hh]at)
-		echo "RedHat"
+		yum install epel-release-latest-7.noarch.rpm -y
+		yum install python-pip python-wheel python-setuptools -y 		
+		;;
+	[Ss][Uu][Ss][Ee]|SLES|sles)
+		zypper -n install python-pip 
+		pip install --upgrade pip setuptools wheel		  
+		;; 
+		*)
+	echo "Unknown distribution. Aborting"
+	exit 0
+	;;
+	esac
+}
+
+# Check distribution and install curl, wget and unzip if needed
+distrocheck () {
+DISTR=$(cat /etc/*release | grep -i pretty | awk -F"\"" '{print $2}' | awk '{print $1}')
+case $DISTR in
+	[Uu]buntu|[Dd]ebian)
+		# echo "Ubuntu/Debian"
+		agentname="walinuxagent"
+		! which curl  >> /dev/null && apt-get install -y curl
+		! which wget  >> /dev/null && apt-get install -y wget
+		! which unzip >> /dev/null && apt-get install -y unzip
+		;;
+	[Cc]ent[Oo][Ss]|[Oo]racle)
+		# echo "RedHat/CentOS/Oracle"
 		agentname="waagent"
-		rhel_non_eus
-		yum install curl wget unzip -y
+		! which curl  >> /dev/null && yum install -y curl
+		! which wget  >> /dev/null && yum install -y wget
+		! which unzip >> /dev/null && yum install -y unzip
+		;;
+	rhel|red|Red|[Rr]ed[Hh]at)
+		# echo "RedHat"
+		agentname="waagent"
+		check_curl=$(which curl)
+		check_wget=$(which wget)
+		check_unzip=$(which unzip)
+		[[ -z "$check_curl" || -z "$check_wget" || -z "$check_unzip" ]] && rhel_non_eus 
+		! which curl  >> /dev/null && yum install -y curl
+		! which wget  >> /dev/null && yum install -y wget
+		! which unzip >> /dev/null && yum install -y unzip
 		rhel_eus
 		;;
 	[Ss][Uu][Ss][Ee]|SLES|sles)
-		echo "SLES"
+		# echo "SLES"
 		agentname="waagent"
-		zypper -n install curl wget unzip
+		! which curl  >> /dev/null && zypper -n install curl
+		! which wget  >> /dev/null && zypper -n install wget
+		! which unzip >> /dev/null && zypper -n install unzip
 		;;
 	*)
 		echo "Unknown distribution. Aborting"
 		exit 0
 		;;
 esac
+}
+###########################
+###	DISTRO CHECK	###
+###########################
+
+distrocheck 
 
 ###########################
 ###	AGENT CHECK	###
 ###########################
-
-# Get latest walinuxagent version from github (see https://github.com/Azure/WALinuxAgent/releases/latest )
-lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep -o -P '(?<=v).*(?=\")')
-
-# Check running waaagent version
-waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
 
 #Make sure autoupdate is enabled
 oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
@@ -178,79 +214,32 @@ sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
 systemctl daemon-reload
 systemctl restart $agentname
 
+# Get latest walinuxagent version from github (see https://github.com/Azure/WALinuxAgent/releases/latest )
+lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep -o -P '(?<=v).*(?=\")')
+
+# Check running waaagent version
+waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
+
 # Compare versions
 do_vercomp $waagentrunning $lastwala "<"
 
-#######################################################
-###	PREREQUISITES CHECK and INSTALL AGENT	    ###
-#######################################################
+##############################
+###	PREREQUISITES CHECK    ###
+##############################
 
 if [[ $upagent == "1" ]]; then
-# Check prerequisites:
-pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
-	if [[ $pvers == "2" ]] ; then
-	# verify pip 
-	pipcheck=$(python -m pip -V | grep -i "not installed")		
-		if [[ ! -z $pipcheck ]] ; then 
-			echo "Prerequisites OK"
-			walainstall
-			pipinst="0"	
-		else
-			echo "Prerequisites NOT OK"
-			installwalinux="0"
-			pipinst="1"			
-		fi		
-	elif [[ $pvers == "3" ]] ; then	
-		echo "Prerequisites OK"
-		walainstall
-		pipinst="0"
-	fi
+	# Check prerequisites:
+	pvers=$(python -c 'import sys; print(".".join(map(str, sys.version_info[:1])))')
+	[[ $pvers != "3" ]] && pipcheck=$(python -m pip -V | grep -i "not installed")
+	[[ -z "$pipcheck"  ]] && pipinstall
 
-	if [[ $pipinst == "1" ]] ; then
-		case $DISTR in
-		[Uu]buntu|[Dd]ebian)
-			echo "Ubuntu/Debian"			  
-			# Install prerequisites
-			apt-get install python-pip wget unzip -y
-			pip install --upgrade pip setuptools wheel
-			walainstall			  
-			;;
-		[Cc]ent[Oo][Ss]|[Oo]racle)
-			echo "RedHat/CentOS/Oracle"
-			# Install prerequisites			  
-			cd /tmp
-			yum install wget unzip -y
-			wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-			yum install epel-release-latest-7.noarch.rpm -y
-			yum install python-pip python-wheel python-setuptools -y 				  
-			walainstall
-			;;
-		rhel|red|Red|[Rr]ed[Hh]at)
-			echo "RedHat"
-			agentname="waagent"
-			rhel_non_eus
-			cd /tmp
-			yum install wget unzip -y
-			wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-			yum install epel-release-latest-7.noarch.rpm -y
-			yum install python-pip python-wheel python-setuptools -y 	
-			rhel_eus
-			walainstall
-			;;
-		[Ss][Uu][Ss][Ee]|SLES|sles)
-			echo "SLES"
-			agentname="waagent"
-			# Install prerequisites
-			zypper -n install python-pip wget unzip
-			pip install --upgrade pip setuptools wheel
-			walainstall		  
-			;; 
-			*)
-		echo "Unknown distribution. Aborting"
-		exit 0
-		;;
-		esac
-	fi	
+############################
+###	INSTALL AGENT    ###
+############################
+
+	# Install walinuxagent
+	walainstall
+
 fi
 
 exit 0
