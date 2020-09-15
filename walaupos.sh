@@ -125,7 +125,6 @@ walainstall () {
 	# Restart WALinuxAgent
 	systemctl daemon-reload
 	systemctl restart $agentname 
-	exit 0
 }
 
 
@@ -207,12 +206,6 @@ distrocheck
 ###	AGENT CHECK	###
 ###########################
 
-#Make sure autoupdate is enabled
-oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
-sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
-systemctl daemon-reload
-systemctl restart $agentname
-
 # Get latest walinuxagent version from github (see https://github.com/Azure/WALinuxAgent/releases/latest )
 lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep -o -P '(?<=v).*(?=\")')
 
@@ -221,6 +214,12 @@ waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{p
 
 # Compare versions
 do_vercomp $waagentrunning $lastwala "<"
+
+
+#Make sure autoupdate is enabled
+oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
+sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
+
 
 ##############################
 ###	PREREQUISITES CHECK    ###
@@ -233,5 +232,8 @@ pipcheck=$(python -m pip -V | grep -i "not installed")
 ###		INSTALL AGENT    ###
 ############################
 [[ $upagent == "1" ]] && walainstall 
+
+systemctl daemon-reload
+systemctl restart $agentname
 
 exit 0
