@@ -156,7 +156,7 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 					if [[ $upagent == "1" ]]; then
 						echo "Agent version $agentversion lower than $lastwala."
 						echo "Updating the WaLinuxAgent on Linux VM $vmName, to version $lastwala."
-						az vm run-command invoke --verbose -g $rgName -n $vmName --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupos.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && chmod +x walaupOS.sh && ./walaupos.sh'
+						az vm run-command invoke --verbose -g $rgName -n $vmName --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupos.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && chmod +x walaupos.sh && ./walaupos.sh'
 						
 						# Give 30s time to Azure Portal to update agent status
 						sleep 30
