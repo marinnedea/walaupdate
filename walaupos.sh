@@ -108,7 +108,7 @@ walainstall () {
 	
 	# Delete everything inside /var/lib/waagent/ except the "run-command" directory
 	shopt -s extglob
-	cd /var/lib/waaagent/ && rm -rfv !(run-command) *
+	cd /var/lib/waagent/ && rm -rfv !(run-command) *
 	cd -
 
 	# Install WALinuxAgent 			
