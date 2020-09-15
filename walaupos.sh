@@ -102,25 +102,29 @@ rhel_eus () {
 # Install waagent from github function
 walainstall () {	
 	
+	# Backup existing WALinuxAgent files
+	systemctl stop $agentname 	
+	mv /var/lib/waagent/ovf-env.xml /tmp/ovf-env.xml
+	
+	# Delete everything inside /var/lib/waagent/ except the "run-command" directory
+	shopt -s extglob
+	cd /var/lib/waaagent/ && rm -rfv !(run-command) *
+	cd -
+
 	# Install WALinuxAgent 			
 	wget https://github.com/Azure/WALinuxAgent/archive/v$lastwala.zip
 	unzip v$lastwala.zip
 	cd WALinuxAgent-$lastwala
 
-	# Backup existing WALinuxAgent files
-	systemctl stop $agentname 	
-	mv /var/lib/waagent  /var/lib/waagentBACKUP
+	# Check which python is available
+	which python3 > /dev/null 2>&1 && i="3"
+	# python$i -c 'import sys; print(".".join(map(str, sys.version_info[:])))'
 
-	# Run installer
-	python setup.py install
-
-	# Start it back
-	systemctl daemon-reload
-	systemctl restart $agentname
+	# Run the installer
+	python$i setup.py install
 
 	# Restore ovf-env.xml from backup
-	sleep 5
-	cp /var/lib/waagentBACKUP/ovf-env.xml /var/lib/waagent/ovf-env.xml
+	cp /tmp/ovf-env.xml /var/lib/waagent/ovf-env.xml
 	
 	# Restart WALinuxAgent
 	systemctl daemon-reload
@@ -159,7 +163,7 @@ distrocheck () {
 	case $DISTR in
 	[Uu]buntu|[Dd]ebian)
 		# echo "Ubuntu/Debian"
-		agentname="walinuxagent"
+		agentname="walinuxagent"	
 		! which curl  > /dev/null 2>&1 && apt-get install -y curl
 		! which wget  > /dev/null 2>&1 && apt-get install -y wget
 		! which unzip > /dev/null 2>&1 && apt-get install -y unzip
