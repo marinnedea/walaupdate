@@ -99,40 +99,44 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 					echo "--- VM Power state: $vmState"					
 					agentversion=$(az vm get-instance-view --resource-group $rgName --name $vmName | grep -i vmagentversion | awk -F"\"" '{print $4}')	
 					
-					if [[ $agentversion == "Unknown" ]] && [[ $vmState == "VM running" ]]; then
+					if [[ $agentversion == "Unknown" ]] && [[ $vmState == "VM running" ]] ; then
 						echo "The VM $vmName is in running state but the WaLinuxAgent version is not reported."	
 						agentstate="Unknown"					
-					elif [[ $agentversion != "Unknown" ]] && [[ $osversion == "Linux" ]] && [[ $vmState == "VM running" ]]; then						
-						[ $(ver ${agentversion}) -lt $(ver  ${lastwala}) ] && upagent="1" 					
-					elif [[ $osversion == "Linux" ]] && [[ $vmState == "VM running" ]]; then
-						echo "WaLinuxAgent is already updated to version $agentversion on Linux VM $vmName"
-					else 
-						echo "The VM $vmName is powered OFF and couldn't retrieve the agent version"
+					elif [[ $agentversion != "Unknown" ]] && [[ $osversion == "Linux" ]] && [[ $vmState == "VM running" ]] ; then						
+							if [ $(ver ${agentversion}) -lt $(ver  ${lastwala}) ] ; then
+								upagent="1"
+								echo "Agent version ${agentversion} lower than ${lastwala}." 	
+							else
+								echo "WaLinuxAgent is already updated to version $agentversion on Linux VM $vmName"
+							fi 
+					elif [[ $osversion == "Linux" ]] && [[ $vmState != "VM running" ]] ; then 
+						echo "The VM $vmName is not pwered ON and couldn't retrieve the agent version"
 					fi
 
-					if [[ "${upagent}" == "1" ]]; then
-						echo "Agent version ${agentversion} lower than ${lastwala}."
+					if [[ "${upagent}" == "1" ]]; then						
 						echo "Updating the WaLinuxAgent on Linux VM $vmName, to version $lastwala."
 						
 						#az vm run-command invoke --verbose -g $rgName -n $vmName --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupos.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && chmod +x walaupos.sh && ./walaupos.sh'
 						
 						az vm extension set -g $rgName --vm-name $vmName --name customScript --publisher Microsoft.Azure.Extensions --verbose --protected-settings '{"fileUris": ["https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh"],"commandToExecute": "chmod +x walaupos.sh && ./walaupos.sh"}'
 
-						# Give 30s time to Azure Portal to update agent status
-						sleep 30
+						# Give 60s time to Azure Portal to update agent status
+						sleep 60
 						
 						# Check new agent version
 						newagentversion=$(az vm get-instance-view --resource-group $rgName --name $vmName | grep -i vmagentversion | awk -F"\"" '{print $4}')
-						if [[ "$newagentversion" == "$lastwala" ]]; then
-							 echo "WaLinuxAgent updated to version $newagentversion on Linux VM $vmName"
-							 agentstate="Ready"
-						 elif  [[ "$newagentversion" != "$lastwala" ]] ; then
-						 	echo "WaLinuxAgent failed to update to version $lastwala on Linux VM $vmName or is not yet reflected in the portal"			 
-							agentstate="Not Updated"		
-						elif [[ -z $newagentversion ]]; then					
-							echo "Post update, the VaLinuxAgent is not reporting status. Please check if everything is OK in VM $vmName"
-							agentstate="Not Available"
-						fi						
+						if [[ $newagentversion != "Unknown" ]] || [[ ! -z $newagentversion ]] ; then
+							if [ $(ver ${newagentversion}) -eq $(ver  ${lastwala}) ] ; then
+								echo "WaLinuxAgent updated to version $newagentversion on Linux VM $vmName"
+								agentstate="Ready"
+							elif [ $(ver ${newagentversion}) -gt $(ver  ${lastwala}) ] ; then
+								echo "WaLinuxAgent failed to update to version $lastwala on Linux VM $vmName or is not yet reflected in the portal"		 
+								agentstate="Not Updated"		
+							fi	
+						else [[ -z $newagentversion ]]; then					
+								echo "Post update, the VaLinuxAgent is not reporting status. Please check if everything is OK in VM $vmName"
+								agentstate="Not Available"	
+						fi				
 					fi
 					# Addding the necessary info to the CSV file. 
 					echo "$subs;$rgName;$vmName;$vmState;$osversion;$agentversion;$newagentversion;$agentstate" >> $csv_file
