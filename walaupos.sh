@@ -20,84 +20,42 @@ set -x
 ###	FUNCTIONS	###
 ###########################
 
-# Compare version function 1
-
+# Compare versions function (only works with numbers)
 ver () { 
 	printf "%03d%03d%03d%03d" $(echo "$1" | tr '.' ' ')
 }
-
-# vercomp () {
-#     if [[ $1 == $2 ]]
-#     then
-#         return 0
-#     fi
-#     local IFS=.
-#     local i ver1=($1) ver2=($2)
-#     # fill empty fields in ver1 with zeros
-#     for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
-#     do
-#         ver1[i]=0
-#     done
-#     for ((i=0; i<${#ver1[@]}; i++))
-#     do
-#         if [[ -z ${ver2[i]} ]]
-#         then
-#             # fill empty fields in ver2 with zeros
-#             ver2[i]=0
-#         fi
-#         if ((10#${ver1[i]} > 10#${ver2[i]}))
-#         then
-#             return 1
-#         fi
-#         if ((10#${ver1[i]} < 10#${ver2[i]}))
-#         then
-#             return 2
-#         fi
-#     done
-#     return 0
-# }
-# # Compare version function 2
-# do_vercomp () {
-#   vercomp $1 $2
-#     case $? in
-#         0) op='=';;
-#         1) op='>';;
-#         2) op='<';;
-#     esac
-#     if [[ $op == $3 ]] 
-#     then		
-# 		echo "FAIL: '$1 $op $2'"
-# 		echo "Agent needs updated"
-# 		upagent="1"        
-#     else
-#         echo "Pass: '$1 $op $2'"
-# 		echo "Agent already up-to-date"
-# 		exit 0
-#     fi
-# }
 
 # Install waagent from github function
 walainstall () {	
 	
 	# Backup existing WALinuxAgent files
+	echo "Backin-up ovf-env.xml"
 	cp /var/lib/waagent/ovf-env.xml /tmp/ovf-env.xml
 
-	# Install WALinuxAgent 			
+	# Install WALinuxAgent 		
+	echo "Downloading latest waagent release"	
 	wget https://github.com/Azure/WALinuxAgent/archive/v$lastwala.zip
+	
+	echo "Extracting ${lastwala}.zip"
 	unzip v$lastwala.zip
-	cd WALinuxAgent-$lastwala
+	
 
 	# Check which python is available
+	echo "Starting installation"
+	cd WALinuxAgent-$lastwala
 	which python3 > /dev/null 2>&1 && i="3"
 	# python$i -c 'import sys; print(".".join(map(str, sys.version_info[:])))'
 
 	# Run the installer
 	python$i setup.py install
-
+	echo "Installation completed"
+	
 	# Restore ovf-env.xml from backup
+	echo "Restoring ovf-env.xml file"
 	cp /tmp/ovf-env.xml /var/lib/waagent/ovf-env.xml
 	
 	# Restart WALinuxAgent
+	echo "Reloading daemons"
 	systemctl daemon-reload
 }
 
@@ -121,7 +79,7 @@ pipinstall () {
 		zypper -n install python$i-pip 
 		pip$i install --upgrade pip setuptools wheel		  
 		;; 
-		*)
+	*)
 	echo "Unknown distribution. Aborting"
 	exit 0
 	;;
@@ -132,21 +90,21 @@ pipinstall () {
 distrocheck () {
 	case $DISTR in
 	[Uu]buntu|[Dd]ebian)
-		# echo "Ubuntu/Debian"
+		echo "Ubuntu/Debian"
 		agentname="walinuxagent"	
 		! which curl   && apt-get install -y curl
 		! which wget   && apt-get install -y wget
 		! which unzip  && apt-get install -y unzip
 		;;
 	[Cc]ent[Oo][Ss]|[Oo]racle)
-		# echo "RedHat/CentOS/Oracle"
+		echo "RedHat/CentOS/Oracle"
 		agentname="waagent"
 		! which curl   && yum install -y curl
 		! which wget   && yum install -y wget
 		! which unzip  && yum install -y unzip
 		;;
 	rhel|red|Red|[Rr]ed[Hh]at)
-		# echo "RedHat"
+		echo "RedHat"
 		agentname="waagent"
 		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 		yum install epel-release-latest-7.noarch.rpm -y
@@ -155,7 +113,7 @@ distrocheck () {
 		! which unzip  && yum install -y --enablerepo=epel unzip
 		;;
 	[Ss][Uu][Ss][Ee]|SLES|sles)
-		# echo "SLES"
+		echo "SLES"
 		agentname="waagent"
 		! which curl   && zypper -n install curl
 		! which wget   && zypper -n install wget
@@ -190,20 +148,23 @@ waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{p
 
 # Compare versions
 # do_vercomp $waagentrunning $lastwala "<"
-
+echo "Comparing agent running version with available one"
 [ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && echo "Agent needs updated" && upagent="1" || echo "Agent is updated.Aborting." && upagent="0"
 
 ##############################
-### PREREQUISITES CHECK    ###
+###	PREREQUISITES CHECK    ###
 ##############################
+echo "Checking pip"
 pipcheck=$(python -m pip -V | grep -i "not installed")
 [[ -z "$pipcheck"  ]] && pipinstall
 
 ############################
-###	INSTALL AGENT    ###
+###		INSTALL AGENT    ###
 ############################
-[[ $upagent == "1" ]] && walainstall 
+[[ $upagent == "1" ]] && walainstall
 
+echo "Restarting agent for the last time."
 systemctl restart $agentname
 
+echo "All done, exiting."
 exit 0
