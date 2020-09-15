@@ -133,9 +133,9 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 								echo "WaLinuxAgent failed to update to version $lastwala on Linux VM $vmName or is not yet reflected in the portal"		 
 								agentstate="Not Updated"		
 							fi	
-						else [[ -z $newagentversion ]]; then					
-								echo "Post update, the VaLinuxAgent is not reporting status. Please check if everything is OK in VM $vmName"
-								agentstate="Not Available"	
+						else				
+							echo "Post update, the VaLinuxAgent is not reporting status. Please check if everything is OK in VM $vmName"
+							agentstate="Not Available"	
 						fi				
 					fi
 					# Addding the necessary info to the CSV file. 
