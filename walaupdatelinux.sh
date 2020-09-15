@@ -104,13 +104,12 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 						echo "Please update the agent manualy on this VM and/or open a support request with Azure for guidance if the WaLinuxAgent is in failed state."	
 						upagent="0"
 						agentstate="Unknown"					
-					elif [[ $agentversion != "Unknown" ]] && [[ $osversion == "Linux" ]] && [[ $vmState == "VM running" ]]; then
-						echo "Comparing agent version:"						
-						[ $(ver ${agentversion}) -lt $(ver  ${lastwala}) ] && echo "Agent needs updated" && upagent="1" || echo "Agent is updated.Aborting." && upagent="0"					
+					elif [[ $agentversion != "Unknown" ]] && [[ $osversion == "Linux" ]] && [[ $vmState == "VM running" ]]; then											
+						[ $(ver ${agentversion}) -lt $(ver  ${lastwala}) ] && upagent="1" || upagent="0"					
 					fi
 					
-					if [[ $upagent == "1" ]]; then
-						echo "Agent version $agentversion lower than $lastwala."
+					if [[ "${upagent}" == "1" ]]; then
+						echo "Agent version ${agentversion} lower than ${lastwala}."
 						echo "Updating the WaLinuxAgent on Linux VM $vmName, to version $lastwala."
 						
 						#az vm run-command invoke --verbose -g $rgName -n $vmName --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupos.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && chmod +x walaupos.sh && ./walaupos.sh'
