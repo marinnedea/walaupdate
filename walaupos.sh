@@ -49,11 +49,11 @@ walainstall () {
 	! which python3 && python setup.py install || python3 setup.py install
 
 	echo "Installation completed"
-	
+
 	# Restore ovf-env.xml from backup
 	echo "Restoring ovf-env.xml file"
 	cp /tmp/ovf-env.xml /var/lib/waagent/ovf-env.xml
-	
+
 	# Restart WALinuxAgent
 	echo "Reloading daemons"
 	systemctl daemon-reload
@@ -121,9 +121,6 @@ distrocheck () {
 	esac
 }
 
-# Make sure autoupdate is enabled, so even if this script fails further, the agent may try to update itself automatically. 
-oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
-sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
 
 ###########################
 ###	DISTRO CHECK	###
@@ -157,10 +154,15 @@ pipcheck=$(python -m pip -V | grep -i "not installed")
 ###		INSTALL AGENT    ###
 ############################
 if [ "${upagent}" == "1" ] ; 	then
-walacleanup && walainstall 
+walacleanup 
+walainstall 
 else 
 	echo "Agent is updated already."
 fi
+
+# Make sure autoupdate is enabled, so even if this script fails further, the agent may try to update itself automatically. 
+oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
+sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
 
 echo "Restarting agent."
 systemctl restart ${agentname}
