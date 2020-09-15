@@ -41,7 +41,8 @@ walainstall () {
 	cd WALinuxAgent-${lastwala}
 
 	# Run the installer
-	( python3 setup.py install ||  python setup.py install ) 2>/dev/null 
+	! which python3 && python setup.py install || python3 setup.py install
+
 	echo "Installation completed"
 	
 	# Restore ovf-env.xml from backup
