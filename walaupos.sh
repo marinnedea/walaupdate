@@ -75,7 +75,6 @@ do_vercomp () {
 walainstall () {	
 	
 	# Backup existing WALinuxAgent files
-	systemctl stop $agentname 	
 	cp /var/lib/waagent/ovf-env.xml /tmp/ovf-env.xml
 
 	# Install WALinuxAgent 			
@@ -96,6 +95,7 @@ walainstall () {
 	# Restart WALinuxAgent
 	systemctl daemon-reload
 	systemctl restart $agentname 
+	exit 0
 }
 
 # Install pip, setuptools and wheel
