@@ -156,10 +156,10 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 					if [[ $upagent == "1" ]]; then
 						echo "Agent version $agentversion lower than $lastwala."
 						echo "Updating the WaLinuxAgent on Linux VM $vmName, to version $lastwala."
-						az vm run-command invoke --verbose -g $rgName -n $vmName --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupOS.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && chmod +x walaupOS.sh && sh -x walaupOS.sh'
+						az vm run-command invoke --verbose -g $rgName -n $vmName --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupos.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && chmod +x walaupOS.sh && ./walaupos.sh'
 						
-						# Give 60s time to Azure Portal to update agent status
-						sleep 60
+						# Give 30s time to Azure Portal to update agent status
+						sleep 30
 						
 						# Check new agent version
 						newagentversion=$(az vm get-instance-view --resource-group $rgName --name $vmName | grep -i vmagentversion | awk -F"\"" '{print $4}')
@@ -167,7 +167,7 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 							 echo "WaLinuxAgent updated to version $newagentversion on Linux VM $vmName"
 							 agentstate="Ready"
 						 elif  [[ "$newagentversion" != "$lastwala" ]] ; then
-						 	echo "WaLinuxAgent failed to update to version $lastwala on Linux VM $vmName"						 
+						 	echo "WaLinuxAgent failed to update to version $lastwala on Linux VM $vmName or is not yet reflected in the portal"						 
 							agentstate="Not Updated"		
 						elif [[ -z $newagentversion ]]; then					
 							echo "Post update, the VaLinuxAgent is not reporting status. Please check if everything is OK in VM $vmName"
