@@ -50,6 +50,9 @@ walainstall () {
 	# Restart WALinuxAgent
 	echo "Reloading daemons"
 	systemctl daemon-reload
+	
+	echo "Restarting agent for the last time."
+	trap 'systemctl restart "${agentname}"' 0
 }
 
 # Install pip, setuptools and wheel
@@ -151,8 +154,4 @@ pipcheck=$(python -m pip -V | grep -i "not installed")
 ############################
 [[ $upagent == "1" ]] && walainstall
 
-echo "Restarting agent for the last time."
-trap 'systemctl restart "${agentname}"' 0
-
 echo "All done, exiting."
-exit 0
