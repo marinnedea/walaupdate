@@ -11,7 +11,6 @@
 #########################################################################################################
 
 # Log execution
-
 exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>/var/log/wala_update.log 2>&1
@@ -28,7 +27,6 @@ ver () {
 
 # Install waagent from github function
 walainstall () {	
-	
 	# Backup existing WALinuxAgent files
 	echo "Backin-up ovf-env.xml"
 	cp /var/lib/waagent/ovf-env.xml /tmp/ovf-env.xml
@@ -36,19 +34,13 @@ walainstall () {
 	# Install WALinuxAgent 		
 	echo "Downloading latest waagent release"	
 	wget https://github.com/Azure/WALinuxAgent/archive/v$lastwala.zip
-	
 	echo "Extracting ${lastwala}.zip"
 	unzip v$lastwala.zip
-	
-
-	# Check which python is available
 	echo "Starting installation"
-	cd WALinuxAgent-$lastwala
-	which python3 > /dev/null 2>&1 && i="3"
-	# python$i -c 'import sys; print(".".join(map(str, sys.version_info[:])))'
+	cd WALinuxAgent-${lastwala}
 
 	# Run the installer
-	python$i setup.py install
+	( python3 setup.py install ||  python setup.py install ) 2>/dev/null 
 	echo "Installation completed"
 	
 	# Restore ovf-env.xml from backup
@@ -64,27 +56,22 @@ walainstall () {
 pipinstall () {
 	case $DISTR in
 	[Uu]buntu|[Dd]ebian)
-		which python3  && i="3"
-		apt-get install python$i-pip -y
-		pip$i install --upgrade pip setuptools wheel  
+		( apt-get install python3-pip -y || apt-get install python-pip -y ) 2>/dev/null 
 		;;
 	[Cc]ent[Oo][Ss]|[Oo]racle|rhel|[Rr]ed|[Rr]ed[Hh]at)
 		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 		yum install epel-release-latest-7.noarch.rpm -y
-		which python3  && i="3"
-		yum install python$i-pip python$i-wheel python$i-setuptools -y 
-		pip$i install --upgrade pip setuptools wheel				  	
+		( yum install python3-pip python3-wheel python3-setuptools -y || yum install python-pip python-wheel python-setuptools -y ) 2>/dev/null 
 		;;
 	[Ss][Uu][Ss][Ee]|SLES|sles)
-		which python3  && i="3"
-		zypper -n install python$i-pip 
-		pip$i install --upgrade pip setuptools wheel		  
+		( zypper -n install python3-pip || zypper -n install python-pip ) 2>/dev/null 	  
 		;; 
 	*)
 	echo "Unknown distribution. Aborting"
 	exit 0
 	;;
 	esac
+	( pip3 install --upgrade pip setuptools wheel || pip install --upgrade pip setuptools wheel ) 2>/dev/null 
 }
 
 # Check distribution and install curl, wget and unzip if needed
@@ -153,7 +140,7 @@ echo "Comparing agent running version with available one"
 [ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && echo "Agent needs updated" && upagent="1" || echo "Agent is updated.Aborting." && upagent="0"
 
 ##############################
-###	PREREQUISITES CHECK    ###
+### PREREQUISITES CHECK    ###
 ##############################
 echo "Checking pip"
 pipcheck=$(python -m pip -V | grep -i "not installed")
