@@ -147,12 +147,12 @@ echo "Comparing agent running version with available one"
 ##############################
 echo "Checking pip"
 pipcheck=$(python -m pip -V | grep -i "not installed")
-[[ -z "${pipcheck}"  ]] && pipinstall
+[ -z "${pipcheck}"  ] && pipinstall
 
 ############################
 ###		INSTALL AGENT    ###
 ############################
-[[ "${upagent}" == "1" ]] && walainstall || echo "Agent is updated already."
+[ "${upagent}" == "1" ] && walainstall || echo "Agent is updated already."
 
 echo "Restarting agent."
 systemctl restart ${agentname}
