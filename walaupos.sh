@@ -11,9 +11,11 @@
 #########################################################################################################
 
 # Log execution
+
 exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
-exec 1>/var/log/wala_update.log 2>&1
+logfile="/var/log/wala_update.log"
+exec 1>> >(ts '[%Y-%m-%d %H:%M:%S]' > "${logfile}") 2>&1
 set -x
 
 ###########################
@@ -159,7 +161,7 @@ pipcheck=$(python -m pip -V | grep -i "not installed")
 [[ -z "$pipcheck"  ]] && pipinstall
 
 ############################
-###		INSTALL AGENT    ###
+###	INSTALL AGENT    ###
 ############################
 [[ $upagent == "1" ]] && walainstall
 
