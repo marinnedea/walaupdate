@@ -76,12 +76,7 @@ walainstall () {
 	
 	# Backup existing WALinuxAgent files
 	systemctl stop $agentname 	
-	mv /var/lib/waagent/ovf-env.xml /tmp/ovf-env.xml
-	
-	# Delete everything inside /var/lib/waagent/ except the "run-command" directory
-	shopt -s extglob
-	cd /var/lib/waagent/ && rm -rfv !(run-command) *
-	cd -
+	cp /var/lib/waagent/ovf-env.xml /tmp/ovf-env.xml
 
 	# Install WALinuxAgent 			
 	wget https://github.com/Azure/WALinuxAgent/archive/v$lastwala.zip
