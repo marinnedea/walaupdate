@@ -71,34 +71,6 @@ do_vercomp () {
     fi
 }
 
-# Updating Azure RHUI certificates
-rhel_repo_cert () {
-	yum update -y --disablerepo='*' --enablerepo='*microsoft*'
-}
-
-# Switching to Azure non-EUS RHUI
-rhel_non_eus () {
-	FILE="/etc/yum/vars/releasever"
-	[ -f "$FILE" ] && vlock="1" || vlock="0"
-	if [[ "$vlock" == "1" ]]; then	
-		mv /etc/yum/vars/releasever /tmp/releasever
-		yum --disablerepo='*' remove 'rhui-azure-rhel7-eus' -y
-		yum --config='https://rhelimage.blob.core.windows.net/repositories/rhui-microsoft-azure-rhel7.config' install 'rhui-azure-rhel7' -y
-	elif [[  "$vlock" == "0"  ]] ; then
-		rhel_repo_cert
-	fi
-} 
-
-# Reastoring back to Azure EUS RHUI
-rhel_eus () {
-	FILE="/tmp/releasever"
-	if [ -f "$FILE" ] ; then
-		yum --disablerepo='*' remove 'rhui-azure-rhel7' -y 
-		yum --config='https://rhelimage.blob.core.windows.net/repositories/rhui-microsoft-azure-rhel7-eus.config' install 'rhui-azure-rhel7-eus' -y
-		cp $FILE > /etc/yum/vars/releasever
-	fi
-}
-
 # Install waagent from github function
 walainstall () {	
 	
@@ -178,14 +150,11 @@ distrocheck () {
 	rhel|red|Red|[Rr]ed[Hh]at)
 		# echo "RedHat"
 		agentname="waagent"
-		check_curl=$(which curl)
-		check_wget=$(which wget)
-		check_unzip=$(which unzip)
-		[[ -z "$check_curl" || -z "$check_wget" || -z "$check_unzip" ]] && rhel_non_eus 
-		! which curl  > /dev/null 2>&1 && yum install -y curl
-		! which wget  > /dev/null 2>&1 && yum install -y wget
-		! which unzip > /dev/null 2>&1 && yum install -y unzip
-		rhel_eus
+		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+		yum install epel-release-latest-7.noarch.rpm -y
+		! which curl  > /dev/null 2>&1 && yum install -y --enablerepo=epel curl
+		! which wget  > /dev/null 2>&1 && yum install -y --enablerepo=epel wget
+		! which unzip > /dev/null 2>&1 && yum install -y --enablerepo=epel unzip
 		;;
 	[Ss][Uu][Ss][Ee]|SLES|sles)
 		# echo "SLES"
