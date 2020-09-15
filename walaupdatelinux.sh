@@ -102,7 +102,6 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 					if [[ $agentversion == "Unknown" ]] && [[ $vmState == "VM running" ]]; then
 						echo "The VM $vmName is in running state but the WaLinuxAgent version is not reported."
 						echo "Please update the agent manualy on this VM and/or open a support request with Azure for guidance if the WaLinuxAgent is in failed state."	
-						upagent="0"
 						agentstate="Unknown"					
 					elif [[ $agentversion != "Unknown" ]] && [[ $osversion == "Linux" ]] && [[ $vmState == "VM running" ]]; then											
 						[ $(ver ${agentversion}) -lt $(ver  ${lastwala}) ] && upagent="1" || upagent="0"					
@@ -131,8 +130,9 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 							echo "Post update, the VaLinuxAgent is not reporting status. Please check if everything is OK in VM $vmName"
 							agentstate="Not Available"
 						fi						
+					else 
+						echo "WaLinuxAgent is already updated to version $lastwala on Linux VM $vmName"
 					fi
-					
 					# Addding the necessary info to the CSV file. 
 					echo "$subs;$rgName;$vmName;$vmState;$osversion;$agentversion;$newagentversion;$agentstate" >> $csv_file
 					echo ""
