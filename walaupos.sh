@@ -27,6 +27,7 @@ ver () {
 
 # Install waagent from github function
 walainstall () {	
+	
 	# Backup existing WALinuxAgent files
 	echo "Backin-up ovf-env.xml"
 	cp /var/lib/waagent/ovf-env.xml /tmp/ovf-env.xml
@@ -50,9 +51,9 @@ walainstall () {
 	# Restart WALinuxAgent
 	echo "Reloading daemons"
 	systemctl daemon-reload
-	
+
 	echo "Restarting agent for the last time."
-	trap 'systemctl restart "${agentname}"' 0
+	systemctl restart ${agentname}
 }
 
 # Install pip, setuptools and wheel
@@ -143,7 +144,7 @@ echo "Comparing agent running version with available one"
 [ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && echo "Agent needs updated" && upagent="1" || echo "Agent is updated.Aborting." && upagent="0"
 
 ##############################
-### PREREQUISITES CHECK    ###
+###  PREREQUISITES CHECK   ###
 ##############################
 echo "Checking pip"
 pipcheck=$(python -m pip -V | grep -i "not installed")
