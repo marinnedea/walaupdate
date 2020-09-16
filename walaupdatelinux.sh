@@ -1,6 +1,6 @@
 #!/bin/bash
 #########################################################################################################
-# Description:  Find Windows Azure Agent version on all VMs in all subscriptions 	       		#
+# Description:  Find Windows Azure Agent version on all VMs in all subscriptions and updates it    		#
 # Author: 	Marin Nedea										#
 # Created: 	June 24th, 2020										#
 # Usage:  	Just run the script with sh (e.g. sh script.sh)           				#
@@ -12,7 +12,15 @@
 echo "DISCLAIMER: 
 This script is provided as it is, and without any warranty. Neither the authot or the company the author 
 of this script works for at this moment, or will work in the future, shall be held responsible about any
-harm the incorrect usage of this script may cause."
+harm the incorrect usage of this script may cause.
+
+Please note the following software, if missing, will be installed on your VMs:
+- wget
+- curl
+- unzip
+- python-setuptools
+
+Also, temporarily, on CentOS and RedHat machines, the epel repository will be enabled."
 echo ""
 echo ""
 read -p "Are you sure you wish to continue? " -n 1 -r
@@ -115,6 +123,7 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 									echo "Agent version ${agentversion} lower than ${lastwala}."
 									upagent="1"
 								elif [ $(ver ${agentversion}) -eq $(ver  ${lastwala}) ]
+								then
 									echo "WaLinuxAgent is already updated to version ${agentversion} on Linux VM ${vmName}"
 									newagentversion=${agentversion}
 									portalversion=${agentversion}
