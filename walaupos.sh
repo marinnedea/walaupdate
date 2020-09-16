@@ -159,14 +159,14 @@ echo "Comparing agent running version with available one"
 [ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && upagent="1" ||  upagent="0"
 
 ##############################
-###	PREREQUISITES CHECK    ###
+###   PREREQUISITES CHECK  ###
 ##############################
 echo "Checking pip"
 pipcheck=$(python -m pip -V | grep -i "not installed")
 [[ -z "${pipcheck}"  ]] && pipinstall || echo "pip is available"
 
 ############################
-###		INSTALL AGENT    ###
+###	INSTALL AGENT    ###
 ############################
 [[ "${upagent}" == "1" ]] && walainstall || echo "Agent is updated already."
 
