@@ -26,9 +26,9 @@ ver () {
 }
 
 # remove existing walinuagent 
-walacleanup () {
-	( apt-get remove -y walinuxagent || yum remove -y WALinuxAgent  || zypper -n python-azure-agent )  2>/dev/null
-}
+#walacleanup () {
+#	( apt-get remove -y walinuxagent || yum remove -y WALinuxAgent  || zypper -n python-azure-agent )  2>/dev/null
+#}
 
 # Install waagent from github function
 walainstall () {	
@@ -153,8 +153,8 @@ pipcheck=$(python -m pip -V | grep -i "not installed")
 ############################
 ###		INSTALL AGENT    ###
 ############################
-if [ "${upagent}" == "1" ] ; 	then
-walacleanup 
+if [ "${upagent}" == "1" ] ; then
+#walacleanup 
 walainstall 
 else 
 	echo "Agent is updated already."
