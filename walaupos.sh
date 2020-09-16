@@ -53,7 +53,7 @@ walainstall () {
 
 	# Install WALinuxAgent 		
 	echo "Downloading latest waagent release"	
-	wget https://github.com/Azure/WALinuxAgent/archive/v${lastwala}.zip
+	wget https://github.com/Azure/WALinuxAgent/archive/v${lastwala}.zip 2>/dev/null
 	echo "Extracting ${lastwala}.zip"
 	unzip v$lastwala.zip
 	echo "Starting installation"
@@ -80,7 +80,7 @@ pipinstall () {
 		( apt-get install python3-pip -y || apt-get install python-pip -y ) 2>/dev/null 
 		;;
 	[Cc]ent[Oo][Ss]|[Oo]racle|rhel|[Rr]ed|[Rr]ed[Hh]at)
-		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 2>/dev/null
 		yum install epel-release-latest-7.noarch.rpm -y
 		( yum install python3-pip python3-wheel python3-setuptools -y || yum install python-pip python-wheel python-setuptools -y ) 2>/dev/null 
 		;;
@@ -112,7 +112,7 @@ distrocheck () {
 		;;
 	[Rr][Hh][Ee][Ll]|[Rr]ed|[Rr]ed[Hh]at)
 		echo "RedHat"
-		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 2>/dev/null
 		yum install epel-release-latest-7.noarch.rpm -y
 		! which curl   && yum install -y --enablerepo=epel curl
 		! which wget   && yum install -y --enablerepo=epel wget
@@ -146,7 +146,7 @@ distrocheck
 ###########################
 
 # Get latest walinuxagent version from github (see https://github.com/Azure/WALinuxAgent/releases/latest )
-lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep -o -P '(?<=v).*(?=\")')
+lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest 2>/dev/null | grep -o -P '(?<=v).*(?=\")')
 
 # Check running waaagent version
 waagentrunning=$(waagent --version | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
@@ -157,7 +157,7 @@ echo "Comparing agent running version with available one"
 [ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && upagent="1" ||  upagent="0"
 
 ##############################
-###  PREREQUISITES CHECK   ###
+###   PREREQUISITES CHECK  ###
 ##############################
 echo "Checking pip"
 pipcheck=$(python -m pip -V | grep -i "not installed")
@@ -169,12 +169,12 @@ pipcheck=$(python -m pip -V | grep -i "not installed")
 [[ "${upagent}" == "1" ]] && walainstall || echo "Agent is updated already."
 
 cd -
-waagent --version >> stdout
-echo "" > stderr
+waagentrunning=$(waagent --version 2> /dev/null | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
+[[ ! -z ${waagentrunning} ]] && echo "Running agent version is now: ${waagentrunning}" >> stdout
 
-echo "Restarting agent 30 seconds after this script completes."
-echo "This should give enough time to Custom Script Extension to report status"
-echo "and also to the waagent to comunicate with the portal the new version."
+echo "	Restarting agent 30 seconds after this script completes.
+	This should give enough time to Custom Script Extension to report status 
+	and also to the waagent to comunicate with the portal the new version."
 restartagentcron
 
 echo "All done, exiting."
