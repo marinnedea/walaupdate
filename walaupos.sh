@@ -133,9 +133,9 @@ distrocheck () {
 	esac
 }
 
-# Make sure autoupdate is enabled, so even if this script fails further, the agent may try to update itself automatically. 
+# Make sure autoupdate is disabled to avoid download bug. 
 oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
-sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
+sed -i -e "s/${oldstring}/AutoUpdate.Enabled=n/g" /etc/waagent.conf
 
 ###########################
 ###	DISTRO CHECK	###
