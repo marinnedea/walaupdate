@@ -114,8 +114,10 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 									echo "Agent version ${agentversion} lower than ${lastwala}."
 									upagent="1"
 								elif [ $(ver ${agentversion}) -eq $(ver  ${lastwala}) ]
-								then
 									echo "WaLinuxAgent is already updated to version ${agentversion} on Linux VM ${vmName}"
+									newagentversion=${agentversion}
+									portalversion=${agentversion}
+									distroname="N/A"
 									upagent="0"
 									agentstate="Ready"
 								fi
@@ -135,9 +137,7 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 						#az vm extension set -g ${rgName} --vm-name ${vmName} --name customScript --publisher Microsoft.Azure.Extensions --verbose --protected-settings '{"fileUris": ["https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh"],"commandToExecute": "sh walaupos.sh"}'
 
 						# Check new agent version
-						newagentversion=$(grep -i stdout /tmp/run-command.output | awk -F" -- " '{print $2}')
-						distroname=$(grep -i stdout /tmp/run-command.output | awk -F" -- " '{print $4}')	
-						sleep 60
+						newagentversion=$(grep -i stdout /tmp/run-command.output | awk -F" -- " '{print $2}')	
 						portalversion=$(az vm get-instance-view --resource-group ${rgName} --name ${vmName} | grep -i vmagentversion | awk -F"\"" '{print $4}')			
 						if [[ ${newagentversion} == "Unknown" ]] || [[ -z ${newagentversion} ]]
 						then
@@ -159,6 +159,7 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 								agentstate="Not Updated"		
 							fi	
 						fi
+						distroname=$(grep -i stdout /tmp/run-command.output | awk -F" -- " '{print $4}')
 						# Emptying the run-command output file for the next run
 						echo "" > tee /tmp/run-command.output	
 						
