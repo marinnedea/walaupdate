@@ -26,9 +26,16 @@ ver () {
 }
 
 # remove existing walinuagent 
-#walacleanup () {
-#	( apt-get remove -y walinuxagent || yum remove -y WALinuxAgent  || zypper -n python-azure-agent )  2>/dev/null
-#}
+restartagent () {
+	case ${DISTR} in
+	[Uu]buntu|[Dd]ebian)
+		systemctl restart walinuxagent
+		;;
+	*)
+		systemctl restart waagent
+	;;
+	esac
+}
 
 # Install waagent from github function
 walainstall () {	
@@ -49,11 +56,11 @@ walainstall () {
 	! which python3 && python setup.py install || python3 setup.py install
 
 	echo "Installation completed"
-
+	
 	# Restore ovf-env.xml from backup
 	echo "Restoring ovf-env.xml file"
 	cp /tmp/ovf-env.xml /var/lib/waagent/ovf-env.xml
-
+	
 	# Restart WALinuxAgent
 	echo "Reloading daemons"
 	systemctl daemon-reload
@@ -86,30 +93,26 @@ distrocheck () {
 	case $DISTR in
 	[Uu]buntu|[Dd]ebian)
 		echo "Ubuntu/Debian"
-		agentname="walinuxagent"	
 		! which curl   && apt-get install -y curl
 		! which wget   && apt-get install -y wget
 		! which unzip  && apt-get install -y unzip
 		;;
 	[Cc]ent[Oo][Ss]|[Oo]racle)
-		echo "RedHat/CentOS/Oracle"
-		agentname="waagent"
+		echo "CentOS/Oracle"
 		! which curl   && yum install -y curl
 		! which wget   && yum install -y wget
 		! which unzip  && yum install -y unzip
 		;;
-	rhel|red|Red|[Rr]ed[Hh]at)
+	[Rr][Hh][Ee][Ll]|[Rr]ed|[Rr]ed[Hh]at)
 		echo "RedHat"
-		agentname="waagent"
 		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
 		yum install epel-release-latest-7.noarch.rpm -y
 		! which curl   && yum install -y --enablerepo=epel curl
 		! which wget   && yum install -y --enablerepo=epel wget
 		! which unzip  && yum install -y --enablerepo=epel unzip
 		;;
-	[Ss][Uu][Ss][Ee]|SLES|sles)
+	[Ss][Uu][Ss][Ee]|[Ss][Ll][Ee][Ss])
 		echo "SLES"
-		agentname="waagent"
 		! which curl   && zypper -n install curl
 		! which wget   && zypper -n install wget
 		! which unzip  && zypper -n install unzip
@@ -121,6 +124,9 @@ distrocheck () {
 	esac
 }
 
+# Make sure autoupdate is enabled, so even if this script fails further, the agent may try to update itself automatically. 
+oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
+sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
 
 ###########################
 ###	DISTRO CHECK	###
@@ -153,18 +159,13 @@ pipcheck=$(python -m pip -V | grep -i "not installed")
 ############################
 ###		INSTALL AGENT    ###
 ############################
-if [ "${upagent}" == "1" ] ; then
-#walacleanup 
+if [ "${upagent}" == "1" ] ; 	then
 walainstall 
 else 
 	echo "Agent is updated already."
 fi
 
-# Make sure autoupdate is enabled, so even if this script fails further, the agent may try to update itself automatically. 
-oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
-sed -i -e "s/${oldstring}/AutoUpdate.Enabled=y/g" /etc/waagent.conf
-
 echo "Restarting agent."
-systemctl restart ${agentname}
+#restartagent
 
 echo "All done, exiting."
