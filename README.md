@@ -25,3 +25,9 @@ Please note the following software, if missing, will be installed on your VMs:
 - execute the script:
 
       ./walaupdatelinux.sh
+       
+# DISCLAIMER: 
+This script is provided as it is and without any warranty. 
+Neither the authot or the company the author of this script works for at this moment, or will work in the future, can be held responsible for any
+harm this script may cause. 
+USE IT AT YOUR OWN RISK!
