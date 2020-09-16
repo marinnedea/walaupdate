@@ -130,9 +130,9 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 					if [[ "${upagent}" == "1" ]]; then						
 						echo "Updating the WaLinuxAgent on Linux VM $vmName, to version $lastwala."
 						
-						az vm run-command invoke --verbose -g $rgName -n $vmName --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupos.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && ./walaupos.sh'
+						az vm run-command invoke --verbose -g $rgName -n $vmName --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupos.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && sh walaupos.sh'
 						
-						#az vm extension set -g $rgName --vm-name $vmName --name customScript --publisher Microsoft.Azure.Extensions --verbose --protected-settings '{"fileUris": ["https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh"],"commandToExecute": "./walaupos.sh"}'
+						#az vm extension set -g $rgName --vm-name $vmName --name customScript --publisher Microsoft.Azure.Extensions --verbose --protected-settings '{"fileUris": ["https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh"],"commandToExecute": "sh walaupos.sh"}'
 
 						
 						
