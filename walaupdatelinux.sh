@@ -18,13 +18,13 @@ echo ""
 read -p "Are you sure you wish to continue? " -n 1 -r
 echo ""
 echo ""
-if [[ $REPLY =~ ^[Yy]$ ]] ; then
+if [[ ${REPLY} =~ ^[Yy]$ ]] ; then
  
 echo "Script starting"  
 # CSV file:
 csv_file=/tmp/azagentversion.csv
 backup_file=/tmp/azagentversion.$(date +"%m-%d-%Y_%T" ).BKP.csv
-csv_header="Subscription;ResourceGroup;VM Name;VM Power Status;OS type;OLD Agent version;NEW Agent version;Agent status"
+csv_header="Subscription;ResourceGroup;VM Name;VM Power Status;OS type;Distro Name;OLD Agent version;NEW Agent version;Portal version;Agent status"
 
 # Show execution on screen
 #set -x
@@ -33,20 +33,20 @@ csv_header="Subscription;ResourceGroup;VM Name;VM Power Status;OS type;OLD Agent
 lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep -o -P '(?<=v).*(?=\")')
 
 # Create the csv file if does not exists; backup and create if already exist.
-if [ ! -f $csv_file ]
+if [ ! -f ${csv_file} ]
 then
-    touch $csv_file && echo "Created $csv_file" 
+    touch ${csv_file} && echo "Created ${csv_file}" 
 	echo ""
 	echo ""
 else 
-	mv  $csv_file $backup_file && echo "Created a backup of $csv_file as $backup_file" 
+	mv  ${csv_file} ${backup_file} && echo "Created a backup of ${csv_file} as ${backup_file}" 
 	echo ""
 	echo ""
-	touch $csv_file && echo "Created a new $csv_file"
+	touch ${csv_file} && echo "Created a new ${csv_file}"
 	echo ""
 	echo ""
 fi
-echo $csv_header > $csv_file
+echo ${csv_header} > ${csv_file}
 
 # Checking if there any account logged in azcli
 if az account show > /dev/null 2>&1; then
@@ -72,40 +72,40 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 	username=$(az account show --query user.name --output tsv)
 	
 	# Select subsctiption 1 by 1
-	az account set --subscription $subs		
-	echo "Cheching subscription $subs :"
+	az account set --subscription ${subs}		
+	echo "Cheching subscription ${subs} :"
 	
 	# Check running account read permissions over the selected subscription and send output to /dev/null to avoid screen clogging with unnecessary data.
 	# Info: https://docs.microsoft.com/en-us/azure/role-based-access-control/role-assignments-list-cli#list-role-assignments-for-a-user
 	# If user has permissions, the script will continue, else will skip this subscription and show a message on the screen.
-	if az role assignment list --all --assignee $username --query [].roleDefinitionName  > /dev/null 2>&1; then 	
+	if az role assignment list --all --assignee ${username} --query [].roleDefinitionName  > /dev/null 2>&1; then 	
 		# List all resource groups in selected subscription
 		declare -a rgarray="$(az group list  --query '[].name' -o tsv)"		
 		#check if array is empty
-		if [ ! -z "$rgarray" ]; then
+		if [ ! -z "${rgarray}" ]; then
 			for rg in ${rgarray[@]}; do
-			rgName=$rg;			
-			echo "- Checking Resource Group: $rgName"			
+			rgName=${rg};			
+			echo "- Checking Resource Group: ${rgName}"			
 			# List all VMs for RG $rgName
-			declare -a vmarray="$(az vm list -g $rgName --query '[].name' -o tsv)"			
+			declare -a vmarray="$(az vm list -g ${rgName} --query '[].name' -o tsv)"			
 			# check if VM array is empty
-			if [ ! -z "$vmarray" ]; then											
+			if [ ! -z "${vmarray}" ]; then											
 				for vm in ${vmarray[@]}; do					
-					vmName=$vm;						
-					echo "-- Checking vm: $vmName" 					
-					osversion="$(az vm get-instance-view -g $rgName -n $vmName | grep -i osType| awk -F '"' '{printf $4 "\n"}')"
-					echo "--- OS: $osversion"					
-					vmState="$(az vm show -g $rgName -n $vmName -d --query powerState -o tsv)"
-					echo "--- VM Power state: $vmState"					
-					agentversion=$(az vm get-instance-view --resource-group $rgName --name $vmName | grep -i vmagentversion | awk -F"\"" '{print $4}')	
+					vmName=${vm};						
+					echo "-- Checking vm: ${vmName}" 					
+					osversion="$(az vm get-instance-view -g ${rgName} -n ${vmName} | grep -i osType| awk -F '"' '{printf $4 "\n"}')"
+					echo "--- OS: ${osversion}"					
+					vmState="$(az vm show -g ${rgName} -n ${vmName} -d --query powerState -o tsv)"
+					echo "--- VM Power state: ${vmState}"					
+					agentversion=$(az vm get-instance-view --resource-group ${rgName} --name ${vmName} | grep -i vmagentversion | awk -F"\"" '{print $4}')	
 					
-					if [[ $osversion == "Linux" ]]
+					if [[ ${osversion} == "Linux" ]]
 					then
-						if [[ $vmState == "VM running" ]]
+						if [[ ${vmState} == "VM running" ]]
 						then
-							if [[ -z $agentversion ]] || [[ $agentversion == "Unknown" ]]
+							if [[ -z ${agentversion} ]] || [[ ${agentversion} == "Unknown" ]]
 							then
-								echo "The VM $vmName is in running state but the WaLinuxAgent version is not reported."
+								echo "The VM ${vmName} is in running state but the WaLinuxAgent version is not reported."
 								upagent="0"
 								agentstate="Not Available"
 							else
@@ -115,36 +115,38 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 									upagent="1"
 								elif [ $(ver ${agentversion}) -eq $(ver  ${lastwala}) ]
 								then
-									echo "WaLinuxAgent is already updated to version ${agentversion} on Linux VM $vmName"
+									echo "WaLinuxAgent is already updated to version ${agentversion} on Linux VM ${vmName}"
 									upagent="0"
 									agentstate="Ready"
 								fi
 							fi
 						else
-							echo "The VM $vmName is not pwered ON and couldn't retrieve the agent version"
+							echo "The VM ${vmName} is not pwered ON and couldn't retrieve the agent version"
 							upagent="0"
 							agentstate="Not Available"
 						fi
 					fi
 
 					if [[ "${upagent}" == "1" ]]; then						
-						echo "Updating the WaLinuxAgent on Linux VM $vmName, to version $lastwala."
+						echo "Updating the WaLinuxAgent on Linux VM ${vmName}, to version ${lastwala}."
 						
-						az vm run-command invoke --verbose -g $rgName -n $vmName --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupos.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && sh walaupos.sh'  | tee /tmp/run-command.output
+						az vm run-command invoke --verbose -g ${rgName} -n ${vmName} --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupos.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && sh walaupos.sh'  | tee /tmp/run-command.output
 												
-						#az vm extension set -g $rgName --vm-name $vmName --name customScript --publisher Microsoft.Azure.Extensions --verbose --protected-settings '{"fileUris": ["https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh"],"commandToExecute": "sh walaupos.sh"}'
+						#az vm extension set -g ${rgName} --vm-name ${vmName} --name customScript --publisher Microsoft.Azure.Extensions --verbose --protected-settings '{"fileUris": ["https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh"],"commandToExecute": "sh walaupos.sh"}'
 
 						# Check new agent version
-						newagentversion=$(grep -i stdout /tmp/run-command.output | awk -F" -- " '{print $2}')	
-						portalversion=$(az vm get-instance-view --resource-group $rgName --name $vmName | grep -i vmagentversion | awk -F"\"" '{print $4}')			
-						if [[ $newagentversion == "Unknown" ]] || [[ -z $newagentversion ]]
+						newagentversion=$(grep -i stdout /tmp/run-command.output | awk -F" -- " '{print $2}')
+						distroname=$(grep -i stdout /tmp/run-command.output | awk -F" -- " '{print $4}')	
+						sleep 60
+						portalversion=$(az vm get-instance-view --resource-group ${rgName} --name ${vmName} | grep -i vmagentversion | awk -F"\"" '{print $4}')			
+						if [[ ${newagentversion} == "Unknown" ]] || [[ -z ${newagentversion} ]]
 						then
-							echo "Post update, the VaLinuxAgent is not reporting status. Please check if everything is OK in VM $vmName"
+							echo "Post update, the VaLinuxAgent is not reporting status. Please check if everything is OK in VM ${vmName}"
 							agentstate="Unknown"
 						else 
 							if [ $(ver ${newagentversion}) -eq $(ver  ${lastwala}) ]
 							then
-								echo "WaLinuxAgent updated to version $newagentversion on Linux VM $vmName"
+								echo "WaLinuxAgent updated to version ${newagentversion} on Linux VM ${vmName}"
 								if [ $(ver ${portalversion}) -eq $(ver  ${lastwala}) ]	
 								then
 									echo "WaLinuxAgent updated version is also reported to portal"
@@ -153,7 +155,7 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 								fi
 								agentstate="Updated"
 							else
-								echo "WaLinuxAgent failed to update to version $lastwala on Linux VM $vmName"		 
+								echo "WaLinuxAgent failed to update to version ${lastwala} on Linux VM ${vmName}"		 
 								agentstate="Not Updated"		
 							fi	
 						fi
@@ -162,7 +164,7 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 						
 					fi
 					# Addding the results to the CSV file. 
-					echo "$subs;$rgName;$vmName;$vmState;$osversion;$agentversion;$newagentversion;$agentstate" >> $csv_file
+					echo "${subs};${rgName};${vmName};${vmState};${osversion};${distroname};${agentversion};${newagentversion};${portalversion};${agentstate}" >> ${csv_file}
 					echo ""
 					echo ""
 				done
@@ -178,7 +180,7 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 		 echo ""	
 		fi
 	else
-		echo "- You do not have the necessary permissions on subscription $subs.
+		echo "- You do not have the necessary permissions on subscription ${subs}.
 		More information is available on https://docs.microsoft.com/en-us/azure/role-based-access-control/role-assignments-list-cli#list-role-assignments-for-a-user"
 		echo ""
 		echo ""		
@@ -189,9 +191,9 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 	###########################################################################################################################	
 	Completed checking the Agent version on all subscriptions for all VMs.
 	
-	The results are saved in the CSV file $csv_file.
+	The results are saved in the CSV file ${csv_file}.
 	
-	To import the results in excel, please download the CSV file $csv_file from this VM and follow instructions on: 
+	To import the results in excel, please download the CSV file ${csv_file} from this VM and follow instructions on: 
 	https://support.microsoft.com/en-us/office/import-or-export-text-txt-or-csv-files-5250ac4c-663c-47ce-937b-339e391393ba	
 	###########################################################################################################################
 	"	
