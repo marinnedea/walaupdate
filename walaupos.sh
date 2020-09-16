@@ -83,6 +83,7 @@ pipinstall () {
 		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 2>/dev/null
 		yum install epel-release-latest-7.noarch.rpm -y
 		( yum install python3-pip python3-wheel python3-setuptools -y || yum install python-pip python-wheel python-setuptools -y ) 2>/dev/null 
+		yum remove epel-release -y
 		;;
 	[Ss][Uu][Ss][Ee]|SLES|sles)
 		( zypper -n install python3-pip || zypper -n install python-pip ) 2>/dev/null 	  
@@ -117,6 +118,7 @@ distrocheck () {
 		! which curl   && yum install -y --enablerepo=epel curl
 		! which wget   && yum install -y --enablerepo=epel wget
 		! which unzip  && yum install -y --enablerepo=epel unzip
+		yum remove epel-release -y
 		;;
 	[Ss][Uu][Ss][Ee]|[Ss][Ll][Ee][Ss])
 		echo "SLES"
@@ -157,24 +159,25 @@ echo "Comparing agent running version with available one"
 [ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && upagent="1" ||  upagent="0"
 
 ##############################
-###   PREREQUISITES CHECK  ###
+###	PREREQUISITES CHECK    ###
 ##############################
 echo "Checking pip"
 pipcheck=$(python -m pip -V | grep -i "not installed")
 [[ -z "${pipcheck}"  ]] && pipinstall || echo "pip is available"
 
 ############################
-###	INSTALL AGENT    ###
+###		INSTALL AGENT    ###
 ############################
 [[ "${upagent}" == "1" ]] && walainstall || echo "Agent is updated already."
 
 cd -
 waagentrunning=$(waagent --version 2> /dev/null | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
-[[ ! -z ${waagentrunning} ]] && echo "Running agent version is now: -- ${waagentrunning} -- " >> stdout
+distroname=$(grep -i pretty /etc/*release | awk -F"\"" '{print $2}')
+[[ ! -z ${waagentrunning} ]] && echo "Running agent version is now -- ${waagentrunning} -- .Distro name is -- ${distroname} -- " >> stdout
 
-echo "	Restarting agent 30 seconds after this script completes.
-	This should give enough time to Custom Script Extension to report status 
-	and also to the waagent to comunicate with the portal the new version."
+echo "Restarting agent 30 seconds after this script completes.
+	  This should give enough time to Custom Script Extension to report status 
+	  and also to the waagent to comunicate with the portal the new version."
 restartagentcron
 
 echo "All done, exiting."
