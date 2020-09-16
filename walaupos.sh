@@ -14,7 +14,7 @@
 exec 3>&1 4>&2
 trap 'exec 2>&4 1>&3' 0 1 2 3
 exec 1>/var/log/wala_update.log 2>&1
-set -x
+#set -x
 
 ###########################
 ###	FUNCTIONS	###
@@ -41,6 +41,7 @@ restartagentcron () {
 	esac
 	#install new cron file
 	crontab /tmp/mycron
+	crontab -l
 	rm /tmp/mycron
 }
 
@@ -60,7 +61,7 @@ walainstall () {
 	cd WALinuxAgent-${lastwala}
 
 	# Run the installer
-	which python && python setup.py install || python3 setup.py install
+	python setup.py install
 
 	echo "Installation completed"
 	
@@ -77,23 +78,24 @@ walainstall () {
 pipinstall () {
 	case ${DISTR} in
 	[Uu]buntu|[Dd]ebian)
-		( apt-get install python3-pip -y || apt-get install python-pip -y ) 2>/dev/null 
+		apt-get install python-pip -y 
+		pip install --upgrade pip setuptools
 		;;
 	[Cc]ent[Oo][Ss]|[Oo]racle|rhel|[Rr]ed|[Rr]ed[Hh]at)
 		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 2>/dev/null
 		yum install epel-release-latest-7.noarch.rpm -y
-		( yum install python3-pip python3-wheel python3-setuptools -y || yum install python-pip python-wheel python-setuptools -y ) 2>/dev/null 
+		yum install python-setuptools -y
 		yum remove epel-release -y
 		;;
 	[Ss][Uu][Ss][Ee]|SLES|sles)
-		( zypper -n install python3-pip || zypper -n install python-pip ) 2>/dev/null 	  
+		 zypper -n install python-pip
+		 pip install --upgrade pip setuptools	  
 		;; 
 	*)
 	echo "Unknown distribution. Aborting"
 	exit 0
 	;;
 	esac
-	( pip3 install --upgrade pip setuptools wheel || pip install --upgrade pip setuptools wheel ) 2>/dev/null 
 }
 
 # Check distribution and install curl, wget and unzip if needed
@@ -113,9 +115,8 @@ distrocheck () {
 		;;
 	[Rr][Hh][Ee][Ll]|[Rr]ed|[Rr]ed[Hh]at)
 		echo "RedHat"
-		wget https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 2>/dev/null
+		curl -o epel-release-latest-7.noarch.rpm  https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm 2>/dev/null
 		yum install epel-release-latest-7.noarch.rpm -y
-		! which curl   && yum install -y --enablerepo=epel curl
 		! which wget   && yum install -y --enablerepo=epel wget
 		! which unzip  && yum install -y --enablerepo=epel unzip
 		yum remove epel-release -y
@@ -132,6 +133,8 @@ distrocheck () {
 		;;
 	esac
 }
+
+workingdir=$(pwd)
 
 # Make sure autoupdate is disabled to avoid download bug. 
 oldstring=$(grep AutoUpdate.Enabled /etc/waagent.conf)
@@ -170,10 +173,9 @@ pipcheck=$(python -m pip -V | grep -i "not installed")
 ############################
 [[ "${upagent}" == "1" ]] && walainstall || echo "Agent is updated already."
 
-cd -
+cd ${workingdir}
 waagentrunning=$(waagent --version 2> /dev/null | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
-distroname=$(grep -i pretty /etc/*release | awk -F"\"" '{print $2}')
-[[ ! -z ${waagentrunning} ]] && echo "Running agent version is now -- ${waagentrunning} -- .Distro name is -- ${distroname} -- " >> stdout
+[[ ! -z ${waagentrunning} ]] && echo "Running agent version is now -- ${waagentrunning} -- " >> stdout
 
 echo "Restarting agent 30 seconds after this script completes.
 	  This should give enough time to Custom Script Extension to report status 
