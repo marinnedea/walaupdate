@@ -33,10 +33,10 @@ restartagentcron () {
 
 	case ${DISTR} in
 	[Uu]buntu|[Dd]ebian)
-		echo "*/30 * * * *  systemctl restart walinuxagent ; crontab -l | grep -v walinuxagent | crontab -" >> mycron		
+		echo "*/10 * * * *  systemctl restart walinuxagent ; crontab -l | grep -v walinuxagent | crontab -" >> mycron		
 		;;
 	*)
-		echo "*/30 * * * *  systemctl restart waagent ; crontab -l | grep -v waagent | crontab -" >> mycron	
+		echo "*/10 * * * *  systemctl restart waagent ; crontab -l | grep -v waagent | crontab -" >> mycron	
 	;;
 	esac
 	#install new cron file
@@ -60,7 +60,7 @@ walainstall () {
 	cd WALinuxAgent-${lastwala}
 
 	# Run the installer
-	! which python3 && python setup.py install || python3 setup.py install
+	which python && python setup.py install || python3 setup.py install
 
 	echo "Installation completed"
 	
@@ -157,20 +157,20 @@ echo "Comparing agent running version with available one"
 [ $(ver ${waagentrunning}) -lt $(ver  ${lastwala}) ] && upagent="1" ||  upagent="0"
 
 ##############################
-###	PREREQUISITES CHECK    ###
+###  PREREQUISITES CHECK   ###
 ##############################
 echo "Checking pip"
 pipcheck=$(python -m pip -V | grep -i "not installed")
-[ -z "${pipcheck}"  ] && pipinstall
+[[ -z "${pipcheck}"  ]] && pipinstall || echo "pip is available"
 
 ############################
-###		INSTALL AGENT    ###
+###	INSTALL AGENT    ###
 ############################
-if [ "${upagent}" == "1" ] ; 	then
-walainstall 
-else 
-	echo "Agent is updated already."
-fi
+[[ "${upagent}" == "1" ]] && walainstall || echo "Agent is updated already."
+
+cd -
+waagent --version >> stdout
+echo "" > stderr
 
 echo "Restarting agent 30 seconds after this script completes."
 echo "This should give enough time to Custom Script Extension to report status"
