@@ -97,7 +97,8 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 					echo "--- OS: ${osversion}"					
 					vmState="$(az vm show -g ${rgName} -n ${vmName} -d --query powerState -o tsv)"
 					echo "--- VM Power state: ${vmState}"					
-					agentversion=$(az vm get-instance-view --resource-group ${rgName} --name ${vmName} | grep -i vmagentversion | awk -F"\"" '{print $4}')	
+					agentversion=$(az vm get-instance-view --resource-group ${rgName} --name ${vmName} | grep -i vmagentversion | awk -F"\"" '{print $4}')
+					distroname=$(az vm  get-instance-view  --resource-group ${rgName} --name ${vmName} --query instanceView -o tsv | awk '{print $8" "$9}')
 					
 					if [[ ${osversion} == "Linux" ]]
 					then
@@ -117,7 +118,6 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 									echo "WaLinuxAgent is already updated to version ${agentversion} on Linux VM ${vmName}"
 									newagentversion=${agentversion}
 									portalversion=${agentversion}
-									distroname="N/A"
 									upagent="0"
 									agentstate="Ready"
 								fi
@@ -137,7 +137,8 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 						#az vm extension set -g ${rgName} --vm-name ${vmName} --name customScript --publisher Microsoft.Azure.Extensions --verbose --protected-settings '{"fileUris": ["https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh"],"commandToExecute": "sh walaupos.sh"}'
 
 						# Check new agent version
-						newagentversion=$(grep -i stdout /tmp/run-command.output | awk -F" -- " '{print $2}')	
+						newagentversion=$(grep -i stdout /tmp/run-command.output | awk -F" -- " '{print $2}')
+						sleep 15	
 						portalversion=$(az vm get-instance-view --resource-group ${rgName} --name ${vmName} | grep -i vmagentversion | awk -F"\"" '{print $4}')			
 						if [[ ${newagentversion} == "Unknown" ]] || [[ -z ${newagentversion} ]]
 						then
@@ -159,7 +160,6 @@ for subs in $(az account list -o tsv | awk '{print $3}'); do
 								agentstate="Not Updated"		
 							fi	
 						fi
-						distroname=$(grep -i stdout /tmp/run-command.output | awk -F" -- " '{print $4}')
 						# Emptying the run-command output file for the next run
 						echo "" > tee /tmp/run-command.output	
 						
