@@ -26,15 +26,22 @@ ver () {
 }
 
 # remove existing walinuagent 
-restartagent () {
+restartagentcron () {
+	#write out current crontab
+	crontab -l > /tmp/mycron
+	#echo new cron into cron file
+
 	case ${DISTR} in
 	[Uu]buntu|[Dd]ebian)
-		systemctl restart walinuxagent
+		echo "*/30 * * * *  systemctl restart walinuxagent ; crontab -l | grep -v walinuxagent | crontab -" >> mycron		
 		;;
 	*)
-		systemctl restart waagent
+		echo "*/30 * * * *  systemctl restart waagent ; crontab -l | grep -v waagent | crontab -" >> mycron	
 	;;
 	esac
+	#install new cron file
+	crontab /tmp/mycron
+	rm /tmp/mycron
 }
 
 # Install waagent from github function
@@ -165,7 +172,10 @@ else
 	echo "Agent is updated already."
 fi
 
-echo "Restarting agent."
-#restartagent
+echo "Restarting agent 30 seconds after this script completes."
+echo "This should give enough time to Custom Script Extension to report status"
+echo "and also to the waagent to comunicate with the portal the new version."
+restartagentcron
 
 echo "All done, exiting."
+exit 0
