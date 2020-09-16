@@ -170,7 +170,7 @@ pipcheck=$(python -m pip -V | grep -i "not installed")
 
 cd -
 waagentrunning=$(waagent --version 2> /dev/null | head -n1 | awk '{print $1}' | awk -F"-" '{print $2}')
-[[ ! -z ${waagentrunning} ]] && echo "Running agent version is now: ${waagentrunning}" >> stdout
+[[ ! -z ${waagentrunning} ]] && echo "Running agent version is now: -- ${waagentrunning} -- " >> stdout
 
 echo "	Restarting agent 30 seconds after this script completes.
 	This should give enough time to Custom Script Extension to report status 
