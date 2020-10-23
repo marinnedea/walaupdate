@@ -133,4 +133,7 @@ fi
 # Addding the results to the CSV file. 
 echo "${subs};${rgName};${vmName};${vmState};${osversion};${distroname};${agentversion};${newagentversion};${portalversion};${agentstate}" >> ${csv_file}
 
+else
+echo "Exiting"
+fi
 exit 0
