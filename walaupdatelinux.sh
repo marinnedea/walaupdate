@@ -1,8 +1,8 @@
 #!/bin/bash
 #########################################################################################################
-# Description:  Find Windows Azure Agent version on all VMs in all subscriptions and updates it    		#
+# Description:  Find Windows Azure Agent version on all VMs in all subscriptions and updates it    	#
 # Author: 	Marin Nedea										#
-# Created: 	June 24th, 2020										#
+# Created: 	February 24th, 2023									#
 # Usage:  	Just run the script with sh (e.g. sh script.sh)           				#
 # Requires:	AzCli 2.0 installed on the machine you're running this script on			#
 # 		https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest	#
@@ -12,203 +12,178 @@
 echo "DISCLAIMER: 
 This script is provided as it is, and without any warranty. Neither the authot or the company the author 
 of this script works for at this moment, or will work in the future, shall be held responsible about any
-harm the incorrect usage of this script may cause.
+harm the incorrect usage of this script may cause."
 
-Please note the following software, if missing, will be installed on your VMs:
-- wget
-- curl
-- unzip
-- python-setuptools
+# Login to the Azure account
+az login
 
-Also, temporarily, on CentOS and RedHat machines, the epel repository will be enabled."
-echo ""
-echo ""
-read -p "Are you sure you wish to continue? " -n 1 -r
-echo ""
-echo ""
-if [[ ${REPLY} =~ ^[Yy]$ ]] ; then
- 
-echo "Script starting"  
-# CSV file:
-csv_file=/tmp/azagentversion.csv
-backup_file=/tmp/azagentversion.$(date +"%m-%d-%Y_%T" ).BKP.csv
-csv_header="Subscription;ResourceGroup;VM Name;VM Power Status;OS type;Distro Name;OLD Agent version;NEW Agent version;Portal version;Agent status"
+# Retrieve the list of all subscriptions in the Azure account
+subscription_list=$(az account list --query "[].id" --output tsv)
 
-# Show execution on screen
-#set -x
+# Initialize the list of VMs where the update couldn't be run due to permissions or version already up to date
+vm_permission_error_list=""
+vm_version_error_list=""
 
-# Get latest walinuxagent version from github (see https://github.com/Azure/WALinuxAgent/releases/latest )
-lastwala=$(curl -s https://github.com/Azure/WALinuxAgent/releases/latest | grep -o -P '(?<=v).*(?=\")')
+# Loop through all subscriptions
+for subscription in $subscription_list; do
+  # Set the default subscription
+  az account set --subscription $subscription
 
-# Create the csv file if does not exists; backup and create if already exist.
-if [ ! -f ${csv_file} ]
-then
-    touch ${csv_file} && echo "Created ${csv_file}" 
-	echo ""
-	echo ""
-else 
-	mv  ${csv_file} ${backup_file} && echo "Created a backup of ${csv_file} as ${backup_file}" 
-	echo ""
-	echo ""
-	touch ${csv_file} && echo "Created a new ${csv_file}"
-	echo ""
-	echo ""
+  # Retrieve the list of all virtual machines in the subscription
+  vm_list=$(az vm list --query "[].{Name:name, ResourceGroup:resourceGroup, OSType:storageProfile.osDisk.osType, Distro:storageProfile.imageReference.offer, PowerState:powerState.code}" --output tsv)
+
+  # Loop through all virtual machines in the subscription
+  while read -r vm_name vm_resource_group vm_os_type vm_distro vm_power_state; do
+    if [ "$vm_power_state" != "running" ]; then
+      # If the VM is not running, start it and wait until it is running
+      az vm start --resource-group $vm_resource_group --name $vm_name --no-wait
+      while [ "$vm_power_state" != "running" ]; do
+        sleep 5
+        vm_power_state=$(az vm show --resource-group $vm_resource_group --name $vm_name --query "powerState.code" --output tsv)
+      done
+    fi
+
+    if [ "$vm_os_type" == "Linux" ]; then
+      # Retrieve the latest stable release version of WaLinuxAgent from the official GitHub repository
+      if ! command -v curl >/dev/null 2>&1; then
+        # If curl is not installed on the VM, install it
+        az vm run-command invoke --resource-group $vm_resource_group --name $vm_name --command-id RunShellScript --scripts "sudo apt-get update && sudo apt-get install curl -y" --no-wait
+      fi
+      latest_version=$(curl -s https://api.github.com/repos/Azure/WALinuxAgent/releases/latest | grep '"tag_name":' | cut -d'"' -f4)
+
+      # Check if the latest version is already installed on the VM
+      installed_version=$(az vm run-command invoke --resource-group $vm_resource_group --name $vm_name --command-id RunShellScript --scripts "waagent -version | grep -oP 'GuestAgent.*\K\d\.\d\.\d'" --query "value[0]" --output tsv)
+      if [ "$latest_version" == "$installed_version" ]; then
+        # If the latest version is already installed on the VM, add it to the list of VMs where the update couldn't be run due to version already up to date
+        vm_version_error_list="$vm_version_error_list\nSubscription: $subscription, Resource Group: $vm_resource_group, VM: $vm_name"
+        continue
+      fi
+
+      # Check if the latest version is available in the Linux distribution repository
+      case "$vm_distro" in
+        ubuntu)
+          if ! command -v apt >/dev/null 2>&1; then
+            # If apt is not installed on the VM, install it
+            az vm run-command invoke --resource-group $vm_resource_group --name $vm_name --command-id RunShellScript --scripts "sudo apt-get update && sudo apt-get install apt -y" --no-wait
+          fi
+          available_version=$(apt-cache policy walinuxagent | grep Candidate | cut -d ":" -f 2 | sed 's/^[[:space:]]*//g')
+          ;;
+        debian)
+          if ! command -v apt >/dev/null 2>&1; then
+            # If apt is not installed on the VM, install it
+            az vm run-command invoke --resource-group $vm_resource_group --name $vm_name --command-id RunShellScript --scripts "sudo apt-get update && sudo apt-get install apt -y" --no-wait
+          fi
+          available_version=$(apt-cache policy walinuxagent | grep Candidate | cut -d ":" -f 2 | sed 's/^[[:space:]]*//g')
+          ;;
+        redhat)
+          if ! command -v yum >/dev/null 2>&1; then
+            # If yum is not installed on the VM, install it
+            az vm run-command invoke --resource-group $vm_resource_group --name $vm_name --command-id RunShellScript --scripts "sudo yum install yum-utils -y" --no-wait
+          fi
+          available_version=$(yum info walinuxagent | grep Version | head -1 | cut -d ":" -f 2 | sed 's/^[[:space:]]*//g')
+          ;;
+        centos)
+          if ! command -v yum >/dev/null 2>&1; then
+            # If yum is not installed on the VM, install it
+            az vm run-command invoke --resource-group $vm_resource_group --name $vm_name --command-id RunShellScript --scripts "sudo yum install yum-utils -y" --no-wait
+          fi
+          available_version=$(yum info walinuxagent | grep Version | head -1 | cut -d ":" -f 2 | sed 's/^[[:space:]]*//g')
+          ;;
+        oracle)
+          if ! command -v yum >/dev/null 2>&1; then
+            # If yum is not installed on the VM, install it
+            az vm run-command invoke --resource-group $vm_resource_group --name $vm_name --command-id RunShellScript --scripts "sudo yum install yum-utils -y" --no-wait
+          fi
+          available_version=$(yum info walinuxagent | grep Version | head -1 | cut -d ":" -f 2 | sed 's/^[[:space:]]*//g')
+          ;;
+        suse)
+          if ! command -v zypper >/dev/null 2>&1; then
+            # If zypper is not installed on the VM, install it
+            az vm run-command invoke --resource-group $vm_resource_group --name $vm_name --command-id RunShellScript --scripts "sudo zypper install -y zypper" --no-wait
+          fi
+          available_version=$(zypper info walinuxagent | grep Version | head -1 | cut -d ":" -f 2 | sed 's/^[[:space:]]*//g')
+          ;;
+        rocky)
+          if ! command -v yum >/dev/null 2>&1; then
+            # If yum is not installed on the VM, install it
+            az vm run-command invoke --resource-group $vm_resource_group --name $vm_name --command-id RunShellScript --scripts "sudo yum install yum-utils -y" --no-wait
+          fi
+          available_version=$(yum info walinuxagent | grep Version | head -1 | cut -d ":" -f 2 | sed 's/^[[:space:]]*//g')
+          ;;
+        *)
+          echo "Unsupported Linux distribution: $vm_distro"
+          continue
+          ;;
+      esac
+
+      if [ "$latest_version" == "$installed_version" ] && [ "$latest_version" == "$available_version" ]; then
+        # If the latest version is already installed on the VM and available in the Linux distribution repository, add it to the list of VMs where the update couldn't be run due to version already up to date
+        vm_version_error_list="$vm_version_error_list\nSubscription: $subscription, Resource Group: $vm_resource_group, VM: $vm_name"
+      elif [ "$latest_version" == "$available_version" ]; then
+        # If the latest version is available in the Linux distribution repository, update it from the repository
+        case "$vm_distro" in
+          ubuntu)
+            command='sudo apt-get update && sudo apt-get install walinuxagent'
+            ;;
+          debian)
+            command='sudo apt-get update && sudo apt-get install walinuxagent'
+            ;;
+          redhat)
+            command='sudo yum update waagent'
+            ;;
+          centos)
+            command='sudo yum update waagent'
+            ;;
+          oracle)
+            command='sudo yum update waagent'
+            ;;
+          suse)
+            command='sudo zypper update walinuxagent'
+            ;;
+          rocky)
+            command='sudo yum update waagent'
+            ;;
+          *)
+            echo "Unsupported Linux distribution: $vm_distro"
+            continue
+            ;;
+        esac
+      else
+        # If the latest version is not available in the Linux distribution repository, update it from the official GitHub repository
+        if ! command -v curl >/dev/null 2>&1; then
+          # If curl is not installed on the VM, install it
+          az vm run-command invoke --resource-group $vm_resource_group --name $vm_name --command-id RunShellScript --scripts "sudo apt-get update && sudo apt-get install curl -y" --no-wait
+        fi
+        command="sudo curl -L -o waagent.tar.gz https://github.com/Azure/WALinuxAgent/archive/$latest_version.tar.gz && sudo tar -zxvf waagent.tar.gz && cd WALinuxAgent-$latest_version && sudo python setup.py install"
+      fi
+
+      # Check if the user has the permissions to run the update command on the VM
+      if az vm run-command list --resource-group $vm_resource_group --name $vm_name --query "[?name=='RunShellScript'].[id]" --output tsv >/dev/null 2>&1; then
+        # Use AzCLI to execute the command on the VM
+        az vm run-command invoke --resource-group $vm_resource_group --name $vm_name --command-id RunShellScript --scripts "$command" --no-wait
+      else
+        # If the user doesn't have the permissions to run the update command on the VM, add it to the list of VMs where the update couldn't be run due to permissions
+        vm_permission_error_list="$vm_permission_error_list\nSubscription: $subscription, Resource Group: $vm_resource_group, VM: $vm_name"
+      fi
+    fi
+
+    if [ "$vm_power_state" != "running" ]; then
+      # If the VM was stopped before upgrading the WaLinuxAgent, stop it back
+      az vm stop --resource-group $vm_resource_group --name $vm_name --no-wait
+    fi
+  done <<< "$vm_list"
+done
+
+# Logout from the Azure account - optional
+# az logout
+
+# Print the list of VMs where the update couldn't be run due to permissions or version already up to date
+if [ "$vm_permission_error_list" != "" ]; then
+  echo "The following VMs couldn't be updated due to permission errors:"
+  echo -e "$vm_permission_error_list"
 fi
-echo ${csv_header} > ${csv_file}
-
-# Checking if there any account logged in azcli
-if az account show > /dev/null 2>&1; then
-	echo "You are already logged in."
-else
-	echo "Please login to Az CLI"
-	az login
-	echo ""
-	echo ""
+if [ "$vm_version_error_list" != "" ]; then
+  echo "The following VMs have the latest version already installed:"
+  echo -e "$vm_version_error_list"
 fi
-echo "Starting processing the data"
-echo ""
-echo ""
 
-# Pure bash functions to compare versions
-ver () { 
-	printf "%03d%03d%03d%03d" $(echo "$1" | tr '.' ' ')
-}
-
-# Find all subscriptions:
-for subs in $(az account list -o tsv | awk '{print $3}'); do
-	# Find current logged in username 
-	username=$(az account show --query user.name --output tsv)
-	
-	# Select subsctiption 1 by 1
-	az account set --subscription ${subs}		
-	echo "Cheching subscription ${subs} :"
-	
-	# Check running account read permissions over the selected subscription and send output to /dev/null to avoid screen clogging with unnecessary data.
-	# Info: https://docs.microsoft.com/en-us/azure/role-based-access-control/role-assignments-list-cli#list-role-assignments-for-a-user
-	# If user has permissions, the script will continue, else will skip this subscription and show a message on the screen.
-	if az role assignment list --all --assignee ${username} --query [].roleDefinitionName  > /dev/null 2>&1; then 	
-		# List all resource groups in selected subscription
-		declare -a rgarray="$(az group list  --query '[].name' -o tsv)"		
-		#check if array is empty
-		if [ ! -z "${rgarray}" ]; then
-			for rg in ${rgarray[@]}; do
-			rgName=${rg};			
-			echo "- Checking Resource Group: ${rgName}"			
-			# List all VMs for RG $rgName
-			declare -a vmarray="$(az vm list -g ${rgName} --query '[].name' -o tsv)"			
-			# check if VM array is empty
-			if [ ! -z "${vmarray}" ]; then											
-				for vm in ${vmarray[@]}; do					
-					vmName=${vm};						
-					echo "-- Checking vm: ${vmName}" 					
-					osversion="$(az vm get-instance-view -g ${rgName} -n ${vmName} | grep -i osType| awk -F '"' '{printf $4 "\n"}')"
-					echo "--- OS: ${osversion}"					
-					vmState="$(az vm show -g ${rgName} -n ${vmName} -d --query powerState -o tsv)"
-					echo "--- VM Power state: ${vmState}"					
-					agentversion=$(az vm get-instance-view --resource-group ${rgName} --name ${vmName} | grep -i vmagentversion | awk -F"\"" '{print $4}')
-					distroname=$(az vm  get-instance-view  --resource-group ${rgName} --name ${vmName} --query instanceView -o tsv | awk '{print $8" "$9}')
-					
-					if [[ ${osversion} == "Linux" ]]
-					then
-						if [[ ${vmState} == "VM running" ]]
-						then
-							if [[ -z ${agentversion} ]] || [[ ${agentversion} == "Unknown" ]]
-							then
-								echo "The VM ${vmName} is in running state but the WaLinuxAgent version is not reported."
-								upagent="0"
-								agentstate="Not Available"
-							else
-								if [ $(ver ${agentversion}) -lt $(ver  ${lastwala}) ]
-								then
-									echo "Agent version ${agentversion} lower than ${lastwala}."
-									upagent="1"
-								elif [ $(ver ${agentversion}) -eq $(ver  ${lastwala}) ]
-								then
-									echo "WaLinuxAgent is already updated to version ${agentversion} on Linux VM ${vmName}"
-									newagentversion=${agentversion}
-									portalversion=${agentversion}
-									upagent="0"
-									agentstate="Ready"
-								fi
-							fi
-						else
-							echo "The VM ${vmName} is not pwered ON and couldn't retrieve the agent version"
-							upagent="0"
-							agentstate="Not Available"
-						fi
-					fi
-
-					if [[ "${upagent}" == "1" ]]; then						
-						echo "Updating the WaLinuxAgent on Linux VM ${vmName}, to version ${lastwala}."
-						
-						az vm run-command invoke --verbose -g ${rgName} -n ${vmName} --command-id RunShellScript --scripts '[ -x /usr/bin/curl ] && dlndr="curl -o " || dlndr="wget -O "; $dlndr walaupos.sh  https://raw.githubusercontent.com/marinnedea/walaupdate/master/walaupos.sh && sh walaupos.sh'  | tee /tmp/run-command${vmName}.output
-												
-						# Check new agent version
-						newagentversion=$(grep -i stdout /tmp/run-command${vmName}.output | awk -F" -- " '{print $2}')
-						sleep 15	 # wait 15 sec before interogating the portal also.
-						portalversion=$(az vm get-instance-view --resource-group ${rgName} --name ${vmName} | grep -i vmagentversion | awk -F"\"" '{print $4}')			
-						if [[ ${newagentversion} == "Unknown" ]] || [[ -z ${newagentversion} ]]
-						then
-							echo "Post update, the VaLinuxAgent is not reporting status. Please check if everything is OK in VM ${vmName}"
-							agentstate="Unknown"
-						else 
-							if [ $(ver ${newagentversion}) -eq $(ver  ${lastwala}) ]
-							then
-								echo "WaLinuxAgent updated to version ${newagentversion} on Linux VM ${vmName}"
-								if [ $(ver ${portalversion}) -eq $(ver  ${lastwala}) ]	
-								then
-									echo "WaLinuxAgent updated version is also reported to portal"
-								else
-									echo "The portal is reporting version ${portalversion}. Please allow up to 5 minutes for it to update"
-								fi
-								agentstate="Updated"
-							else
-								echo "WaLinuxAgent failed to update to version ${lastwala} on Linux VM ${vmName}"		 
-								agentstate="Not Updated"		
-							fi	
-						fi
-						# Emptying the run-command output file for the next run
-						echo "" > tee /tmp/run-command.output	
-						
-					fi
-					# Addding the results to the CSV file. 
-					echo "${subs};${rgName};${vmName};${vmState};${osversion};${distroname};${agentversion};${newagentversion};${portalversion};${agentstate}" >> ${csv_file}
-					echo ""
-					echo ""
-				done
-			else
-				echo "-- Found no VMs in this Resource Group"
-				echo ""
-				echo ""	
-			fi
-			done
-		else 
-		 echo "-- Found no Resource Group in this Subscription"
-		 echo ""
-		 echo ""	
-		fi
-	else
-		echo "- You do not have the necessary permissions on subscription ${subs}.
-		More information is available on https://docs.microsoft.com/en-us/azure/role-based-access-control/role-assignments-list-cli#list-role-assignments-for-a-user"
-		echo ""
-		echo ""		
-	fi
-	done
-	
-	echo "	
-	###########################################################################################################################	
-	Completed checking the Agent version on all subscriptions for all VMs.
-	
-	The results are saved in the CSV file ${csv_file}.
-	
-	To import the results in excel, please download the CSV file ${csv_file} from this VM and follow instructions on: 
-	https://support.microsoft.com/en-us/office/import-or-export-text-txt-or-csv-files-5250ac4c-663c-47ce-937b-339e391393ba	
-	###########################################################################################################################
-	"	
-	exit 0
-else
-	echo ""
-	echo "Elvis has left the building! Aborting script!"
-	echo ""
-	exit 1
-fi
